@@ -1,0 +1,211 @@
+import { useState } from "react";
+import { motion } from "framer-motion";
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState("");
+  const [password, setPassword] = useState("");
+  const [turma, setTurma] = useState("");
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const senhas = {
+      admin: "admin123",
+      professor: "prof123",
+      aluno: "aluno123",
+    };
+    if (!role) return;
+    if (password === senhas[role]) {
+      setUser({ name: "Usuário", role, turma: role === "aluno" ? turma : null });
+    } else {
+      alert("Senha incorreta!");
+    }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setRole("");
+    setPassword("");
+    setTurma("");
+  };
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <motion.div className="bg-white p-8 rounded-2xl shadow-xl w-96" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="text-2xl font-bold text-center mb-6">Portal de Horários</h1>
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <select value={role} onChange={(e) => setRole(e.target.value)} className="border rounded-xl p-2" required>
+              <option value="">Selecione o tipo de acesso</option>
+              <option value="admin">Administração</option>
+              <option value="professor">Professor</option>
+              <option value="aluno">Aluno</option>
+            </select>
+
+            {role === "aluno" && (
+              <input type="text" placeholder="Digite sua turma (ex: 10A)" value={turma} onChange={(e) => setTurma(e.target.value)} className="border rounded-xl p-2" required />
+            )}
+
+            {role && (
+              <input type="password" placeholder="Digite sua senha" value={password} onChange={(e) => setPassword(e.target.value)} className="border rounded-xl p-2" required />
+            )}
+
+            <button type="submit" className="bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700 transition">Entrar</button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Bem-vindo, {user.role} {user.turma && `(Turma: ${user.turma})`}</h1>
+        <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600">Sair</button>
+      </div>
+
+      {user.role === "admin" && <AdminDashboard />}
+      {user.role === "professor" && <ProfessorDashboard />}
+      {user.role === "aluno" && <AlunoDashboard turma={user.turma} />}
+    </div>
+  );
+}
+
+function AdminDashboard() {
+  const [turmas, setTurmas] = useState(["PI01", "PI02", "CC03", "TE02"]);
+  const [horarios, setHorarios] = useState({});
+  const [novaLinha, setNovaLinha] = useState({ turma: "10A", dia: "", hora: "", disciplina: "", professor: "" });
+
+  const adicionarHorario = () => {
+    if (!novaLinha.dia || !novaLinha.hora || !novaLinha.disciplina) return;
+    setHorarios((prev) => {
+      const atual = prev[novaLinha.turma] || [];
+      return { ...prev, [novaLinha.turma]: [...atual, novaLinha] };
+    });
+    setNovaLinha({ turma: "10A", dia: "", hora: "", disciplina: "", professor: "" });
+  };
+
+  const removerHorario = (turma, index) => {
+    setHorarios((prev) => {
+      const atualizado = [...(prev[turma] || [])];
+      atualizado.splice(index, 1);
+      return { ...prev, [turma]: atualizado };
+    });
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-6 rounded-2xl shadow-md">
+      <h2 className="text-xl font-bold mb-4">Gerir Horários</h2>
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <select value={novaLinha.turma} onChange={(e) => setNovaLinha({ ...novaLinha, turma: e.target.value })} className="border p-2 rounded">
+          {turmas.map((t) => <option key={t}>{t}</option>)}
+        </select>
+        <input placeholder="Dia" value={novaLinha.dia} onChange={(e) => setNovaLinha({ ...novaLinha, dia: e.target.value })} className="border p-2 rounded" />
+        <input placeholder="Hora" value={novaLinha.hora} onChange={(e) => setNovaLinha({ ...novaLinha, hora: e.target.value })} className="border p-2 rounded" />
+        <input placeholder="Disciplina" value={novaLinha.disciplina} onChange={(e) => setNovaLinha({ ...novaLinha, disciplina: e.target.value })} className="border p-2 rounded" />
+        <input placeholder="Professor" value={novaLinha.professor} onChange={(e) => setNovaLinha({ ...novaLinha, professor: e.target.value })} className="border p-2 rounded" />
+        <button onClick={adicionarHorario} className="bg-blue-500 text-white rounded p-2 hover:bg-blue-600">Adicionar</button>
+      </div>
+
+      {turmas.map((t) => (
+        <div key={t} className="mb-6">
+          <h3 className="font-bold mb-2">Horário da Turma {t}</h3>
+          <table className="w-full border border-gray-300">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border p-2">Dia</th>
+                <th className="border p-2">Hora</th>
+                <th className="border p-2">Disciplina</th>
+                <th className="border p-2">Professor</th>
+                <th className="border p-2">Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(horarios[t] || []).map((h, i) => (
+                <tr key={i}>
+                  <td className="border p-2">{h.dia}</td>
+                  <td className="border p-2">{h.hora}</td>
+                  <td className="border p-2">{h.disciplina}</td>
+                  <td className="border p-2">{h.professor}</td>
+                  <td className="border p-2 text-center">
+                    <button onClick={() => removerHorario(t, i)} className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Remover</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+
+function ProfessorDashboard() {
+  const [disponibilidades, setDisponibilidades] = useState([]);
+  const [novaDisp, setNovaDisp] = useState({ dia: "", hora: "", disciplina: "" });
+
+  const adicionarDisponibilidade = () => {
+    if (!novaDisp.dia || !novaDisp.hora || !novaDisp.disciplina) return;
+    setDisponibilidades((prev) => [...prev, novaDisp]);
+    setNovaDisp({ dia: "", hora: "", disciplina: "" });
+  };
+
+  const removerDisponibilidade = (index) => {
+    setDisponibilidades((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-6 rounded-2xl shadow-md">
+      <h2 className="text-xl font-bold mb-4">Minhas Disponibilidades</h2>
+
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <input placeholder="Dia" value={novaDisp.dia} onChange={(e) => setNovaDisp({ ...novaDisp, dia: e.target.value })} className="border p-2 rounded" />
+        <input placeholder="Hora" value={novaDisp.hora} onChange={(e) => setNovaDisp({ ...novaDisp, hora: e.target.value })} className="border p-2 rounded" />
+        <input placeholder="Disciplina" value={novaDisp.disciplina} onChange={(e) => setNovaDisp({ ...novaDisp, disciplina: e.target.value })} className="border p-2 rounded" />
+        <button onClick={adicionarDisponibilidade} className="bg-green-500 text-white rounded p-2 hover:bg-green-600 col-span-3">Adicionar Disponibilidade</button>
+      </div>
+
+      <table className="w-full border border-gray-300">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="border p-2">Dia</th>
+            <th className="border p-2">Hora</th>
+            <th className="border p-2">Disciplina</th>
+            <th className="border p-2">Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {disponibilidades.map((d, i) => (
+            <tr key={i}>
+              <td className="border p-2">{d.dia}</td>
+              <td className="border p-2">{d.hora}</td>
+              <td className="border p-2">{d.disciplina}</td>
+              <td className="border p-2 text-center">
+                <button onClick={() => removerDisponibilidade(i)} className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Remover</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </motion.div>
+  );
+}
+
+function AlunoDashboard({ turma }) {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <Card title={`Horário da Turma ${turma}`} description="Ver aulas da semana e professores." />
+    </motion.div>
+  );
+}
+
+function Card({ title, description }) {
+  return (
+    <div className="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transition">
+      <h2 className="text-xl font-bold mb-2">{title}</h2>
+      <p className="text-gray-600">{description}</p>
+      <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600">Abrir</button>
+    </div>
+  );
+}
