@@ -1,42 +1,44 @@
-// src/App.js
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { auth, db } from './firebaseConfig';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
-// --- Constantes compartilhadas ---
 const PROFESSORES = ['João Leite', 'Rui Silva', 'Sónia Pinto', 'Natália Cardoso', 'Ana Teixeira', 'Ricardo Silveira'];
 const DISCIPLINAS = ['CloudOps e Cloud Automation', 'Fundamentos de Python', 'Inglês', 'Matemática', 'Português', 'Educação Física'];
 const TURMAS = ['PI01', 'PI02', 'CC03', 'TE02'];
 const DAYS_OF_WEEK = ['2ª Feira', '3ª Feira', '4ª Feira', '5ª Feira', '6ª Feira'];
 const TIME_SLOTS = ['08:45 - 10:15', '10:30 - 12:00', '12:05 - 13:35', '14:15 - 16:30'];
 
-// --- ScheduleGrid ---
 const ScheduleGrid = ({ schedule, turma, isStudent = false }) => {
   const scheduleRef = useRef();
 
   const handleDownloadPDF = () => {
-    if (!scheduleRef.current || !window.jspdf || !window.html2canvas) {
-      alert("Aguarde um momento e tente novamente.");
+    if (!scheduleRef.current) {
+      alert("Horário ainda não carregado. Tente novamente.");
       return;
     }
-    const { jsPDF } = window.jspdf;
-    window.html2canvas(scheduleRef.current, { scale: 2 }).then((canvas) => {
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('landscape', 'pt', 'a4');
+
+    html2canvas(scheduleRef.current, { scale: 2 }).then((canvas) => {
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("landscape", "pt", "a4");
+
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const ratio = canvas.width / canvas.height;
+
       let width = pdfWidth;
       let height = width / ratio;
       if (height > pdfHeight) {
         height = pdfHeight;
         width = height * ratio;
       }
+
       pdf.setFontSize(18);
       pdf.text(`Horário da Turma: ${turma}`, 20, 30);
-      pdf.addImage(imgData, 'PNG', (pdfWidth - width) / 2, 40, width, height);
+      pdf.addImage(imgData, "PNG", (pdfWidth - width) / 2, 40, width, height);
       pdf.save(`horario-${turma}.pdf`);
     });
   };
@@ -83,7 +85,6 @@ const ScheduleGrid = ({ schedule, turma, isStudent = false }) => {
   );
 };
 
-// --- Admin Dashboard ---
 function AdminDashboard() {
   const [schedules, setSchedules] = useState({});
   const [novaLinha, setNovaLinha] = useState({ turma: TURMAS[0], dia: '', hora: '', disciplina: '', professor: '' });
@@ -196,7 +197,6 @@ function AdminDashboard() {
   );
 }
 
-// --- Professor Dashboard ---
 function ProfessorDashboard({ user }) {
   const [disponibilidades, setDisponibilidades] = useState([]);
   const [novaDisp, setNovaDisp] = useState({ dia: '', hora: '', disciplina: '', turma: '' });
@@ -294,7 +294,6 @@ function ProfessorDashboard({ user }) {
   );
 }
 
-// --- Aluno Dashboard ---
 function AlunoDashboard({ turma }) {
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -329,7 +328,6 @@ function AlunoDashboard({ turma }) {
   );
 }
 
-// --- App principal ---
 export default function App() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState('');
