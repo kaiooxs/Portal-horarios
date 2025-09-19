@@ -197,171 +197,99 @@ function AdminDashboard() {
   );
 }
 
-function AdminDashboard() {
-  const [schedules, setSchedules] = useState({});
-  const [profDisponibilidades, setProfDisponibilidades] = useState([]); // ALTERADO
-
-  useEffect(() => {
-    // Buscar horários das turmas
-    const unsubscribes = TURMAS.map((turma) => {
-      const docRef = doc(db, `artifacts/default-app-id/public/data/schedules`, turma);
-      return onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-          setSchedules(prev => ({ ...prev, [turma]: docSnap.data() }));
-        } else {
-          setSchedules(prev => ({ ...prev, [turma]: { entries: [], published: false } }));
-        }
-      });
-    });
-
-    // Buscar disponibilidades de todos os professores
-    const profRef = doc(db, `artifacts/default-app-id/public/data/availabilities`, "ALL"); // ALTERADO
-    onSnapshot(profRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setProfDisponibilidades(docSnap.data().professores || []);
-      }
-    });
-
-    return () => unsubscribes.forEach(unsub => unsub());
-  }, []);
-
-  const adicionarHorario = async (turma, dia, hora, disciplina, professor) => { // ALTERADO
-    const currentSchedule = schedules[turma]?.entries || [];
-    const existing = currentSchedule.find(e => e.dia === dia && e.hora === hora);
-    let updatedEntries;
-
-    if (existing) {
-      updatedEntries = currentSchedule.map(e =>
-        e.id === existing.id ? { ...e, disciplina, professor } : e
-      );
-    } else {
-      updatedEntries = [...currentSchedule, { id: Date.now().toString(), turma, dia, hora, disciplina, professor }];
-    }
-
-    const docRef = doc(db, `artifacts/default-app-id/public/data/schedules`, turma);
-    await setDoc(docRef, { entries: updatedEntries, published: schedules[turma]?.published || false }, { merge: true });
-  };
-
-  return (
-    <motion.div className="bg-white p-6 rounded-2xl shadow-md">
-      <h2 className="text-xl font-bold mb-4">Gerir Horários</h2>
-
-      {TURMAS.map((t) => (
-        <div key={t} className="mb-8 p-4 border rounded-xl">
-          <h3 className="font-bold text-lg mb-4">Horário da Turma {t}</h3>
-          <div className="grid grid-cols-6 gap-px bg-gray-200 border border-gray-200">
-            <div className="bg-gray-100 p-2 font-bold text-center">Horas</div>
-            {DAYS_OF_WEEK.map((day) => (
-              <div key={day} className="bg-gray-100 p-2 font-bold text-center">{day}</div>
-            ))}
-            {TIME_SLOTS.map((time) => (
-              <React.Fragment key={time}>
-                <div className="bg-gray-100 p-2 font-bold text-center">{time}</div>
-                {DAYS_OF_WEEK.map((day) => {
-                  const entry = schedules[t]?.entries?.find(item => item.dia === day && item.hora === time);
-                  const profsDisponiveis = profDisponibilidades.filter(p =>
-                    p.slots.some(slot => slot.dia === day && slot.hora === time && slot.turma === t)
-                  ); // ALTERADO
-
-                  return (
-                    <div key={`${day}-${time}`} className="bg-white p-2 flex flex-col justify-center items-center">
-                      <select
-                        value={entry?.professor || ""}
-                        onChange={(e) => adicionarHorario(t, day, time, entry?.disciplina || "", e.target.value)}
-                        className="border p-1 rounded w-full"
-                      >
-                        <option value="">Selecione Professor</option>
-                        {profsDisponiveis.map((prof) => (
-                          <option key={prof.nome} value={prof.nome}>{prof.nome}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        placeholder="Disciplina"
-                        value={entry?.disciplina || ""}
-                        onChange={(e) => adicionarHorario(t, day, time, e.target.value, entry?.professor || "")}
-                        className="border p-1 rounded mt-1 w-full"
-                      />
-                    </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      ))}
-    </motion.div>
-  );
-}
-
 function ProfessorDashboard({ user }) {
+  const [disponibilidades, setDisponibilidades] = useState([]);
+  const [novaDisp, setNovaDisp] = useState({ dia: '', hora: '', disciplina: '', turma: '' });
   const [professorName, setProfessorName] = useState('');
-  const [disponibilidades, setDisponibilidades] = useState({});
   const professorDocId = user.uid;
 
   useEffect(() => {
+    if (!professorDocId) return;
     const docRef = doc(db, `artifacts/default-app-id/public/data/availabilities`, professorDocId);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setProfessorName(data.professorName || '');
-        setDisponibilidades(data.slots || {});
+        setDisponibilidades(data.slots || []);
       }
     });
     return () => unsubscribe();
   }, [professorDocId]);
 
-  const toggleHora = (dia, hora) => { // ALTERADO
-    setDisponibilidades((prev) => {
-      const newSlots = { ...prev };
-      if (!newSlots[dia]) newSlots[dia] = [];
-      if (newSlots[dia].includes(hora)) {
-        newSlots[dia] = newSlots[dia].filter((h) => h !== hora);
-      } else {
-        newSlots[dia].push(hora);
-      }
-      return newSlots;
-    });
-  };
-
   const handleSave = async () => {
+    if (!professorName) {
+      alert("Selecione seu nome");
+      return;
+    }
     const docRef = doc(db, `artifacts/default-app-id/public/data/availabilities`, professorDocId);
     await setDoc(docRef, { professorName, slots: disponibilidades }, { merge: true });
-    alert("Disponibilidades salvas!");
+    alert("Disponibilidade salva!");
+  };
+
+  const adicionarDisponibilidade = () => {
+    if (!novaDisp.dia || !novaDisp.hora || !novaDisp.disciplina || !novaDisp.turma) return;
+    setDisponibilidades(prev => [...prev, { ...novaDisp, id: Date.now().toString() }]);
+    setNovaDisp({ dia: '', hora: '', disciplina: '', turma: '' });
+  };
+
+  const removerDisponibilidade = (id) => {
+    setDisponibilidades(prev => prev.filter(d => d.id !== id));
   };
 
   return (
-    <motion.div className="bg-white p-6 rounded-2xl shadow-md">
-      <h2 className="text-xl font-bold mb-4">Disponibilidade Semanal</h2>
-
-      <select
-        value={professorName}
-        onChange={(e) => setProfessorName(e.target.value)}
-        className="border p-2 rounded mb-4 w-full"
-      >
-        <option value="">Selecione o seu nome</option>
-        {PROFESSORES.map((p) => <option key={p} value={p}>{p}</option>)}
-      </select>
-
-      {DAYS_OF_WEEK.map((dia) => (
-        <div key={dia} className="mb-4 border p-3 rounded">
-          <h3 className="font-bold">{dia}</h3>
-          {TIME_SLOTS.map((hora) => (
-            <label key={hora} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={disponibilidades[dia]?.includes(hora) || false}
-                onChange={() => toggleHora(dia, hora)}
-              />
-              {hora}
-            </label>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-6 rounded-2xl shadow-md">
+      <h2 className="text-xl font-bold mb-4">Minhas Disponibilidades</h2>
+      <div className="mb-4">
+        <label className="block font-medium mb-1">Selecione o seu nome:</label>
+        <select value={professorName} onChange={(e) => setProfessorName(e.target.value)} className="border p-2 rounded w-full">
+          <option value="">Selecione o seu nome</option>
+          {PROFESSORES.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 mb-4 p-4 border rounded-lg">
+        <select value={novaDisp.turma} onChange={(e) => setNovaDisp({ ...novaDisp, turma: e.target.value })} className="border p-2 rounded">
+          <option value="">Selecione a Turma</option>
+          {TURMAS.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select value={novaDisp.dia} onChange={(e) => setNovaDisp({ ...novaDisp, dia: e.target.value })} className="border p-2 rounded">
+          <option value="">Selecione o Dia</option>
+          {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <select value={novaDisp.hora} onChange={(e) => setNovaDisp({ ...novaDisp, hora: e.target.value })} className="border p-2 rounded">
+          <option value="">Selecione a Hora</option>
+          {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select value={novaDisp.disciplina} onChange={(e) => setNovaDisp({ ...novaDisp, disciplina: e.target.value })} className="border p-2 rounded">
+          <option value="">Selecione a Disciplina</option>
+          {DISCIPLINAS.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <button onClick={adicionarDisponibilidade} className="bg-blue-500 text-white rounded p-2 hover:bg-blue-600">Adicionar</button>
+      </div>
+      <table className="w-full border border-gray-300 mb-4">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="border p-2">Turma</th>
+            <th className="border p-2">Dia</th>
+            <th className="border p-2">Hora</th>
+            <th className="border p-2">Disciplina</th>
+            <th className="border p-2">Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {disponibilidades.map(d => (
+            <tr key={d.id}>
+              <td className="border p-2">{d.turma}</td>
+              <td className="border p-2">{d.dia}</td>
+              <td className="border p-2">{d.hora}</td>
+              <td className="border p-2">{d.disciplina}</td>
+              <td className="border p-2 text-center">
+                <button onClick={() => removerDisponibilidade(d.id)} className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Remover</button>
+              </td>
+            </tr>
           ))}
-        </div>
-      ))}
-
-      <button onClick={handleSave} className="w-full bg-green-600 text-white rounded p-3 hover:bg-green-700">
-        Salvar Disponibilidades
-      </button>
+        </tbody>
+      </table>
+      <button onClick={handleSave} className="w-full bg-green-600 text-white rounded p-3 hover:bg-green-700">Salvar Minhas Disponibilidades</button>
     </motion.div>
   );
 }
@@ -465,8 +393,8 @@ export default function App() {
               <select value={role} onChange={(e) => setRole(e.target.value)} className="border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
                 <option value="">Selecione o tipo de acesso</option>
                 <option value="admin">Administração</option>
-                <option value="professor">Professores</option>
-                <option value="aluno">Alunos</option>
+                <option value="professor">Professor</option>
+                <option value="aluno">Aluno</option>
               </select>
 
               {role === 'aluno' && (
