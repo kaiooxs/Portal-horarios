@@ -338,29 +338,29 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-  console.log("Iniciando verificação de autenticação...");
+    console.log("Iniciando verificação de autenticação...");
 
-  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-    console.log("onAuthStateChanged chamado", firebaseUser);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("onAuthStateChanged chamado", firebaseUser);
 
-    if (!firebaseUser) {
-      console.log("Nenhum usuário logado, tentando login anônimo...");
-      try {
-        const result = await signInAnonymously(auth);
-        console.log("Login anônimo realizado:", result.user);
-      } catch (error) {
-        console.error("Erro no login anônimo:", error);
-        alert("Erro ao logar anonimamente: " + error.message);
+      if (!firebaseUser) {
+        console.log("Nenhum usuário logado, tentando login anônimo...");
+        try {
+          const result = await signInAnonymously(auth);
+          console.log("Login anônimo realizado:", result.user);
+        } catch (error) {
+          console.error("Erro no login anônimo:", error);
+          alert("Erro ao logar anonimamente: " + error.message);
+        }
+      } else {
+        console.log("Usuário já logado:", firebaseUser);
       }
-    } else {
-      console.log("Usuário já logado:", firebaseUser);
-    }
 
-    setAuthReady(true);
-  });
+      setAuthReady(true);
+    });
 
-  return () => unsubscribe();
-}, []);
+    return () => unsubscribe();
+  }, []);
 
 
   const handleLogin = (e) => {
@@ -412,7 +412,7 @@ export default function App() {
           </motion.div>
         </main>
         <footer className="w-full p-4 flex justify-center">
-          <img src="/imagens/logo-parceiros.png" alt="Partners Logo" className="h-12 filter invert(1)" />
+          <img src="/imagens/logo-parcerias.png" alt="Partners Logo" className="h-12 filter invert(1)" />
         </footer>
       </div>
     );
