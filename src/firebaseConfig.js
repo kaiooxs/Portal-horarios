@@ -1,22 +1,18 @@
-// src/firebaseConfig.js
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCj9B0UOEm5E9whKqyT70dI9MVpFmzdNaA",
-  authDomain: "portal-horarios.firebaseapp.com",
-  projectId: "portal-horarios",
-  storageBucket: "portal-horarios.firebasestorage.app",
-  messagingSenderId: "972749855191",
-  appId: "1:972749855191:web:58c70d2d46b30cd1119392",
-  measurementId: "G-HZW2KK8WSC"
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "REACT_APP_MEASUREMENT_ID",
+  appId: "REACT_APP_APP_ID"
 };
 
-// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
-
-// Exporta Auth e Firestore
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-
+export const storage = getStorage(app);

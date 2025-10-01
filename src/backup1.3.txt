@@ -1,0 +1,934 @@
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { auth, db } from "./firebaseConfig";
+import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import {
+  doc,
+  setDoc,
+  getDocs,
+  onSnapshot,
+  collection,
+  writeBatch,
+  updateDoc,
+  query,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
+const DAYS_OF_WEEK = ["2ª Feira", "3ª Feira", "4ª Feira", "5ª Feira", "6ª Feira"];
+const TIME_SLOTS = [
+  "08:45 - 10:15",
+  "10:30 - 12:30",
+  "Almoço",
+  "13:15 - 14:15",
+  "14:15 - 16:30",
+];
+const TURMAS = ["PI01", "PI02", "IG01", "IG02", "CC03", "CC04", "CC05", "TE12", "TE13", "TE14"];
+const PROFESSORES_EXEMPLO = [
+  "João Leite",
+  "Rui Silva",
+  "Telmo Baldaia",
+  "Sónia Pinto",
+  "Natália Cardoso",
+  "Rafaela Leite",
+  "Ana Teixeira",
+  "Ricardo Silveira",
+  "Vera Rafaela",
+  "Guilherme",
+  "Ana Costa",
+  "Catia",
+  "Madalena",
+  "Manuela Monteiro",
+  "Carmen",
+  "Alexandra Cristina",
+  "Andreza",
+];
+const DISCIPLINAS = [
+  "CloudOps e Cloud Automation",
+  "Fundamentos de Python",
+  "Inglês",
+  "Matemática",
+  "Português",
+  "Educação Física",
+  "Física e Química",
+  "Área de Integração",
+  "TIC",
+  "Estágio Formativo",
+  "Prova de Aptidão Profissonal",
+  "Recuperação",
+  "Cortes de Cabelo - Principios",
+  "Cortes de Cabelo - Tecnicas",
+  "Postiço - Aplicação - Postiço - Aplicação e Manutenção",
+  "Tecnicas de Cortes de Cabelo Feminino",
+  "Extensões e Alongamento do Cabelo",
+  "Tecnicas de Cortes de Cabelo Masculino",
+  "Cuidados Especificos com a Barba e Bigode",
+  "Tecnicas de Design - Tecnicas de Design e Corte de Barba e Bigode",
+];
+
+// Helper para formatar Firestore Timestamp
+const timestampToDate = (ts) => {
+  if (!ts) return null;
+  if (typeof ts.toDate === "function") return ts.toDate();
+  if (ts.seconds) return new Date(ts.seconds * 1000);
+  return new Date(ts);
+};
+
+// Limpeza: remove entradas (professor+disciplina) em schedules onde o professor deixou de estar disponível
+const cleanUpSchedulesAfterUpdate = async (professorNome, newAvailableSlots) => {
+  try {
+    const schedulesRef = collection(
+      db,
+      "artifacts/default-app-id/public/data/schedules"
+    );
+    const schedulesSnap = await getDocs(schedulesRef);
+    const batch = writeBatch(db);
+
+    schedulesSnap.forEach((docSnap) => {
+      const scheduleData = docSnap.data() || {};
+      const originalEntries = scheduleData.entries || [];
+
+      const cleanedEntries = originalEntries.filter((entry) => {
+        // se a entrada não for deste professor, mantem
+        if (entry.professor !== professorNome) return true;
+        // para este professor, só mantém se existir slot correspondente
+        const stillAvailable = newAvailableSlots.some(
+          (slot) =>
+            slot.dia === entry.dia &&
+            slot.hora === entry.hora &&
+            slot.turma === entry.turma
+        );
+        return stillAvailable;
+      });
+
+      if (cleanedEntries.length !== originalEntries.length) {
+        const scheduleRefToUpdate = doc(
+          db,
+          "artifacts/default-app-id/public/data/schedules",
+          docSnap.id
+        );
+        batch.update(scheduleRefToUpdate, { entries: cleanedEntries });
+      }
+    });
+
+    await batch.commit();
+    // console.log("cleanUpSchedulesAfterUpdate concluído");
+  } catch (err) {
+    console.error("cleanUpSchedulesAfterUpdate erro:", err);
+  }
+};
+
+const downloadSchedulePDF = async (elRef, filename = "horario.pdf") => {
+  if (!elRef?.current) return alert("Elemento do horário não encontrado.");
+  const canvas = await html2canvas(elRef.current, { scale: 2 });
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF("landscape", "pt", "a4");
+  pdf.addImage(
+    imgData,
+    "PNG",
+    15,
+    40,
+    pdf.internal.pageSize.getWidth() - 30,
+    0
+  );
+  pdf.save(filename);
+};
+
+const ScheduleGrid = ({ schedule = { entries: [] }, turma = "—", hideHeader = false, refForPdf, showTurmaInCell = false }) => {
+  const localRef = useRef();
+  const ref = refForPdf ?? localRef;
+
+  return (
+    <div className="mb-4">
+      {!hideHeader && (
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-lg font-bold">Turma: {turma}</h3>
+          <button
+            onClick={() => downloadSchedulePDF(ref, `horario-${turma}.pdf`)}
+            className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700"
+          >
+            📄 Baixar PDF
+          </button>
+        </div>
+      )}
+      <div ref={ref} className="bg-white p-4 rounded-lg shadow-md">
+        <div className="grid grid-cols-6 gap-px bg-gray-200 border border-gray-200">
+          <div className="bg-gray-100 p-2 font-bold text-center">Horas</div>
+          {DAYS_OF_WEEK.map((day) => (
+            <div key={day} className="bg-gray-100 p-2 font-bold text-center">
+              {day}
+            </div>
+          ))}
+
+          {TIME_SLOTS.map((time) => (
+            <React.Fragment key={time}>
+              <div className="bg-gray-100 p-2 font-bold text-center">{time}</div>
+              {DAYS_OF_WEEK.map((day) => {
+                const entry = (schedule.entries || []).find(
+                  (it) => it.dia === day && it.hora === time
+                );
+                return (
+                  <div
+                    key={`${day}-${time}`}
+                    className={`p-2 min-h-[80px] flex flex-col justify-center items-center text-center ${time === "Almoço" ? "bg-amber-50" : "bg-white"
+                      }`}
+                  >
+                    {time === "Almoço" ? (
+                      <div className="text-sm text-gray-700">— Almoço —</div>
+                    ) : entry ? (
+                      <>
+                        <p className="font-semibold">{entry.disciplina}</p>
+                        <p className="text-sm text-gray-600">{entry.professor}</p>
+                        {showTurmaInCell && (
+                          <p className="text-xs text-blue-700 font-bold">{entry.turma}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-gray-400">-</p>
+                    )}
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function AdminDashboard() {
+  const [schedules, setSchedules] = useState({});
+  const [availabilities, setAvailabilities] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let unsubscribers = [];
+    TURMAS.forEach((t) => {
+      const docRef = doc(db, `artifacts/default-app-id/public/data/schedules`, t);
+      const unsub = onSnapshot(docRef, (snap) => {
+        if (snap.exists()) setSchedules((p) => ({ ...p, [t]: snap.data() }));
+        else setSchedules((p) => ({ ...p, [t]: { entries: [], published: false } }));
+      });
+      unsubscribers.push(unsub);
+    });
+
+    const unsubAvail = onSnapshot(
+      collection(db, `artifacts/default-app-id/public/data/availabilities`),
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setAvailabilities(list);
+        setLoading(false);
+      }
+    );
+
+    unsubscribers.push(unsubAvail);
+
+    return () => unsubscribers.forEach((u) => u && u());
+  }, []);
+
+  // 👉 Função para editar células do horário
+  const setCell = async (turma, dia, hora, professorName, disciplina) => {
+    const current = schedules[turma]?.entries || [];
+    let updated;
+    if (!professorName) {
+      updated = current.filter((e) => !(e.dia === dia && e.hora === hora));
+    } else {
+      const exists = current.some((e) => e.dia === dia && e.hora === hora);
+      if (exists) {
+        updated = current.map((e) =>
+          e.dia === dia && e.hora === hora ? { ...e, professor: professorName, disciplina } : e
+        );
+      } else {
+        updated = [
+          ...current,
+          { id: Date.now().toString(), turma, dia, hora, professor: professorName, disciplina },
+        ];
+      }
+    }
+    await setDoc(
+      doc(db, `artifacts/default-app-id/public/data/schedules`, turma),
+      { entries: updated, published: schedules[turma]?.published || false },
+      { merge: true }
+    );
+  };
+
+  const togglePublish = async (turma) => {
+    const published = !schedules[turma]?.published;
+    await updateDoc(doc(db, `artifacts/default-app-id/public/data/schedules`, turma), { published });
+  };
+
+  const clearSchedule = async (turma) => {
+    if (!window.confirm(`Tem certeza que deseja limpar completamente o horário da turma ${turma}?`)) return;
+    await setDoc(doc(db, `artifacts/default-app-id/public/data/schedules`, turma), {
+      entries: [],
+      published: false,
+    });
+  };
+
+  if (loading) return <p>Carregando dados do admin...</p>;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-6 rounded-2xl shadow-md">
+      <h2 className="text-xl font-bold mb-4">Admin — Gerir Horários</h2>
+
+      {/* Status de Disponibilidades */}
+      <div className="overflow-x-auto mb-6">
+        <h3 className="text-lg font-semibold mb-2">Status de Disponibilidades</h3>
+        <table className="min-w-full border border-gray-200 rounded-xl">
+          <thead className="bg-gray-100">
+            <tr className="text-center">
+              <th className="px-2 py-1 border">Professor</th>
+              <th className="px-2 py-1 border">Última Atualização</th>
+              <th className="px-2 py-1 border">Almoços</th>
+              <th className="px-2 py-1 border">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {PROFESSORES_EXEMPLO.map((nome) => {
+              const prof = availabilities.find((p) => p.nome === nome);
+              let atualizadoTexto = "Nunca";
+              if (prof?.lastUpdated?.seconds) {
+                atualizadoTexto = new Date(prof.lastUpdated.seconds * 1000).toLocaleString("pt-PT");
+              }
+
+              return (
+                <tr key={nome} className="text-center">
+                  {/* Nome */}
+                  <td className="border px-2 py-1">{nome}</td>
+
+                  {/* Última Atualização */}
+                  <td className="border px-2 py-1">
+                    {prof?.lastUpdated?.seconds
+                      ? new Date(prof.lastUpdated.seconds * 1000).toLocaleString("pt-PT")
+                      : "Nunca"}
+                  </td>
+
+                  {/* Almoços → só dias da semana */}
+                  <td className="border px-2 py-1">
+                    {(prof?.almocosAgendados || []).length > 0
+                      ? prof.almocosAgendados.join(", ")
+                      : "Não marcou"}
+                  </td>
+
+                  {/* Status */}
+                  <td className="border px-2 py-1">
+                    {prof?.lastUpdated ? (
+                      <span className="text-green-600 font-semibold">
+                        ✅ Atualizado
+                      </span>
+                    ) : (
+                      <span className="text-red-500 font-semibold">
+                        ⚠️ Não atualizado
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Horários das turmas */}
+      {TURMAS.map((t) => (
+        <div key={t} className="mb-6 p-4 border rounded-xl">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-bold text-lg">Horário da Turma {t}</h3>
+            <div className="flex gap-2">
+              <button onClick={() => clearSchedule(t)} className="px-3 py-1 rounded-lg bg-gray-600 text-white hover:bg-gray-700">
+                🧹 Limpar Horário
+              </button>
+              <button onClick={() => togglePublish(t)} className={`px-3 py-1 rounded-lg ${schedules[t]?.published ? "bg-red-600" : "bg-blue-600"} text-white`}>
+                {schedules[t]?.published ? "Despublicar" : "Publicar"}
+              </button>
+              <button
+                onClick={() => downloadSchedulePDF({ current: document.querySelector(`#pdf-${t}`) }, `horario-${t}.pdf`)}
+                className="px-3 py-1 rounded-lg bg-green-600 text-white">
+                📄 Baixar PDF
+              </button>
+            </div>
+          </div>
+
+          <div id={`pdf-${t}`} className="overflow-x-auto">
+            <div className="grid grid-cols-6 gap-px bg-gray-200 border border-gray-200">
+              <div className="bg-gray-100 p-2 font-bold text-center">Horas</div>
+              {DAYS_OF_WEEK.map((day) => (
+                <div key={day} className="bg-gray-100 p-2 font-bold text-center">{day}</div>
+              ))}
+
+              {TIME_SLOTS.map((time) => (
+                <React.Fragment key={time}>
+                  <div className="bg-gray-100 p-2 font-bold text-center">{time}</div>
+                  {DAYS_OF_WEEK.map((day) => {
+                    if (time === "Almoço") {
+                      return (
+                        <div key={`${day}-${time}`} className="bg-amber-100 p-2 text-center font-medium text-gray-700">
+                          — Almoço —
+                        </div>
+                      );
+                    } else {
+                      const entry = (schedules[t]?.entries || []).find((e) => e.dia === day && e.hora === time);
+
+                      let profs = availabilities
+                        .filter((p) => (p.slots || []).some((s) => s.dia === day && s.hora === time && s.turma === t));
+
+                      const alreadyAssigned = Object.values(schedules)
+                        .flatMap((sched) => sched?.entries || [])
+                        .filter((e) => e.dia === day && e.hora === time && e.turma !== t)
+                        .map((e) => e.professor);
+
+                      profs = profs.filter((p) => !alreadyAssigned.includes(p.nome));
+
+                      return (
+                        <div key={`${day}-${time}-cell`} className="bg-white p-2 flex flex-col items-center">
+                          <select
+                            key={`${day}-${time}`} // FORÇA re-render quando availabilities mudam
+                            value={entry?.professor || ""}
+                            onChange={(e) => {
+                              const profName = e.target.value;
+                              if (!profName) {
+                                setCell(t, day, time, "", "");
+                                return;
+                              }
+                              if (alreadyAssigned.includes(profName)) {
+                                alert(`O professor ${profName} já está alocado em outra turma neste horário.`);
+                                return;
+                              }
+                              const profDoc = availabilities.find((p) => p.nome === profName);
+                              const slotMatch = (profDoc?.slots || []).find((s) => s.dia === day && s.hora === time && s.turma === t);
+                              const suggestedDisc = slotMatch?.disciplina || profDoc?.disciplinaByTurma?.[t] || "";
+                              setCell(t, day, time, profName, suggestedDisc);
+                            }}
+                            className="border p-1 rounded w-full text-sm"
+                          >
+                            <option value="">Selecione professor...</option>
+                            {profs.map((p) => (
+                              <option key={p.nome} value={p.nome}>{p.nome}</option>
+                            ))}
+                          </select>
+
+                          <input
+                            type="text"
+                            placeholder="Disciplina (editar)"
+                            value={entry?.disciplina || ""}
+                            onChange={(e) => setCell(t, day, time, entry?.professor || "", e.target.value)}
+                            className="border p-1 rounded mt-1 w-full text-sm"
+                          />
+                        </div>
+                      );
+                    }
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+
+function ProfessorDashboard({ professorNameFromLogin }) {
+  const [nome, setNome] = useState(professorNameFromLogin || "");
+  const [minhasTurmas, setMinhasTurmas] = useState([]);
+  const [disciplinaByTurma, setDisciplinaByTurma] = useState({});
+  const [slotsMap, setSlotsMap] = useState({});
+  const [meusHorarios, setMeusHorarios] = useState([]);
+  const [msgConfirmacao, setMsgConfirmacao] = useState("")
+  const [salvando, setSalvando] = useState(false);
+  const [salvamentoManual, setSalvamentoManual] = useState(false);
+  const Curso_Cabeleirerira = ["CC03", "CC04", "CC05"];
+  const Curso_Termalismo = ["TE12", "TE13", "TE14"];
+  const Curso_Programacao = ["PI01", "PI02"];
+  const Curso_InformaticaGestao = ["IG01", "IG02"];
+  const PROFESSOR_TURMAS = {
+    "João Leite": [Curso_Programacao, Curso_InformaticaGestao],
+    "Rui Silva": [Curso_Programacao, Curso_InformaticaGestao, Curso_Termalismo, Curso_Cabeleirerira],
+    "Telmo Baldaia": [Curso_Programacao, Curso_InformaticaGestao],
+    "Sónia Pinto": [Curso_Programacao, Curso_Termalismo],
+    "Natália Cardoso": [Curso_Programacao],
+    "Rafaela Leite": [Curso_Cabeleirerira, Curso_Termalismo],
+    "Ana Teixeira": [Curso_Programacao, Curso_Cabeleirerira],
+    "Ricardo Silveira": [Curso_Programacao, Curso_InformaticaGestao, Curso_Termalismo, Curso_Cabeleirerira],
+    "Vera Rafaela": [Curso_Programacao, Curso_Termalismo],
+    "Guilherme": [Curso_Termalismo, Curso_Cabeleirerira],
+    "Ana Costa": [Curso_Cabeleirerira],
+    "Catia": [Curso_Cabeleirerira],
+    "Madalena": [Curso_Cabeleirerira],
+    "Manuela Monteiro": [Curso_Programacao, Curso_Cabeleirerira],
+    "Carmen": [Curso_Cabeleirerira, Curso_Termalismo],
+    "Alexandra Cristina": [Curso_Cabeleirerira, Curso_Termalismo],
+    "Andreza": [Curso_Termalismo],
+  };
+
+  const PROFESSOR_DISCIPLINAS = {
+    "João Leite": ["Redes", "Arquitetura interna do computador", "Sistemas Operativos", "CloudOps e Cloud Automation"],
+    "Rui Silva": ["Algoritmos", "TIC", "Fundamentos de Python", "Estágio Formativo"],
+    "Telmo Baldaia": ["HTML e CSS", "JavaScript", "Desenvolvimento Web", "MySQL"],
+    "Sónia Pinto": ["Matemática"],
+    "Natália Cardoso": ["Português"],
+    "Rafaela Leite": ["Português"],
+    "Ana Teixeira": ["Inglês"],
+    "Ricardo Silveira": ["Educação Física"],
+    "Vera Rafaela": ["Física e Química"],
+    "Guilherme": ["Área de Integração", "Prova de Aptidão Profissonal", "Estágio Formativo"],
+    "Ana Costa": ["Cortes de Cabelo - Principios", "Cortes de Cabelo - Tecnicas", "Postiço - Aplicação - Postiço - Aplicação e Manutenção"],
+    "Catia": ["Tecnicas de Cortes de Cabelo Feminino", "Extensões e Alongamento do Cabelo"],
+    "Madalena": ["Tecnicas de Cortes de Cabelo Masculino", "Cuidados Especificos com a Barba e Bigode", "Tecnicas de Design - Tecnicas de Design e Corte de Barba e Bigode"],
+    "Manuela Monteiro": ["Prova de Aptidão Profissional", "Estágio Formativo"],
+    "Carmen": ["Física e Química"],
+    "Alexandra Cristina": ["Inglês"],
+    "Andreza": ["Termasmo e Hidroginástica"],
+  };
+
+  // Carregar dados do professor
+  useEffect(() => {
+    if (!nome) return;
+    const docId = nome.toLowerCase().replace(/\s+/g, "_");
+    const docRef = doc(
+      db,
+      "artifacts/default-app-id/public/data/availabilities",
+      docId
+    );
+    const unsub = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setMinhasTurmas(data.turmas || []);
+        setDisciplinaByTurma(data.disciplinaByTurma || {});
+        const m = {};
+        (data.slots || []).forEach((s) => {
+          if (!m[s.dia]) m[s.dia] = [];
+          if (!m[s.dia].includes(s.hora)) m[s.dia].push(s.hora);
+        });
+        (data.almocosAgendados || []).forEach((dia) => {
+          if (!m[dia]) m[dia] = [];
+          if (!m[dia].includes("Almoço")) m[dia].push("Almoço");
+        });
+        setSlotsMap(m);
+
+        // Só mostra confirmação se foi um salvamento manual
+        if (salvamentoManual) {
+          const agora = new Date().toLocaleTimeString("pt-PT");
+          setMsgConfirmacao(`✅ Disponibilidades guardadas em ${agora}`);
+          setSalvamentoManual(false);
+          setTimeout(() => setMsgConfirmacao(""), 3000);
+        }
+      }
+    });
+    return () => unsub();
+  }, [nome, salvamentoManual]);
+
+  // Carregar horários publicados
+  useEffect(() => {
+    if (!nome) return;
+    const q = query(
+      collection(db, "artifacts/default-app-id/public/data/schedules"),
+      where("published", "==", true)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const mySchedules = snap.docs
+        .map((d) => ({ turma: d.id, ...d.data() }))
+        .map((s) => ({
+          ...s,
+          entries: (s.entries || []).filter((e) => e.professor === nome),
+        }))
+        .filter((s) => (s.entries || []).length > 0);
+      setMeusHorarios(mySchedules);
+    });
+    return () => unsub();
+  }, [nome]);
+
+  const turmasDoProfessor = (PROFESSOR_TURMAS[nome] || TURMAS).flat();
+  const disciplinasDoProfessor = PROFESSOR_DISCIPLINAS[nome] || DISCIPLINAS;
+
+  const toggleTurma = (t) =>
+    setMinhasTurmas((p) =>
+      p.includes(t) ? p.filter((x) => x !== t) : [...p, t]
+    );
+
+  const toggleHora = (dia, hora) => {
+    setSlotsMap((p) => {
+      const copy = { ...p };
+      if (!Array.isArray(copy[dia])) copy[dia] = [];
+      copy[dia] = copy[dia].includes(hora)
+        ? copy[dia].filter((h) => h !== hora)
+        : [...copy[dia], hora];
+      return copy;
+    });
+  };
+
+  const handleToggleAllDay = (dia) => {
+    setSlotsMap((p) => ({
+      ...p,
+      [dia]: TIME_SLOTS.every((h) => (p[dia] || []).includes(h))
+        ? []
+        : [...TIME_SLOTS],
+    }));
+  };
+
+  const handleSelectAllTurmas = () => {
+    if (minhasTurmas.length === TURMAS.length) {
+      setMinhasTurmas([]); // Desmarca todas
+    } else {
+      setMinhasTurmas([...TURMAS]); // Seleciona todas
+    }
+  };
+
+  const handleApplyDisciplineToAll = () => {
+    if (minhasTurmas.length === 0) return;
+    // Se todas as disciplinas já estão iguais e não vazias, limpa todas
+    const disciplinaBase = disciplinaByTurma[minhasTurmas[0]] || "";
+    const todasIguais = minhasTurmas.every(
+      (t) => disciplinaByTurma[t] === disciplinaBase && disciplinaBase !== ""
+    );
+    if (todasIguais) {
+      // Limpa todas
+      const novas = {};
+      minhasTurmas.forEach((t) => {
+        novas[t] = "";
+      });
+      setDisciplinaByTurma(novas);
+    } else {
+      // Aplica a mesma disciplina da primeira turma para todas
+      if (!disciplinaBase) {
+        alert("Selecione uma disciplina para a primeira turma.");
+        return;
+      }
+      const novas = {};
+      minhasTurmas.forEach((t) => {
+        novas[t] = disciplinaBase;
+      });
+      setDisciplinaByTurma(novas);
+    }
+  };
+
+  const handleSaveDisponibilidades = async () => {
+    if (!nome) return alert("Preencha o seu nome.");
+
+    setSalvando(true);
+    setMsgConfirmacao("⏳ Salvando...");
+    setSalvamentoManual(true); // Indica que foi um salvamento manual
+
+    const slots = [];
+    const almocosAgendados = [];
+
+    Object.entries(slotsMap).forEach(([dia, horas]) => {
+      (horas || []).forEach((hora) => {
+        if (hora === "Almoço") {
+          if (!almocosAgendados.includes(dia)) almocosAgendados.push(dia);
+        } else {
+          minhasTurmas.forEach((t) => {
+            slots.push({
+              dia,
+              hora,
+              turma: t,
+              disciplina: disciplinaByTurma[t] || "",
+            });
+          });
+        }
+      });
+    });
+
+    const id = (nome || "").toLowerCase().replace(/\s+/g, "_");
+
+    try {
+      await setDoc(
+        doc(db, "artifacts/default-app-id/public/data/availabilities", id),
+        {
+          nome,
+          turmas: minhasTurmas,
+          disciplinaByTurma,
+          slots,
+          almocosAgendados,
+          lastUpdated: serverTimestamp(),
+        }
+      );
+      // Não precisa setar confirmação aqui, será feito no onSnapshot
+    } catch (err) {
+      console.error("Erro ao salvar disponibilidades:", err);
+      setMsgConfirmacao("❌ Erro ao salvar disponibilidades");
+      setSalvamentoManual(false);
+      setTimeout(() => setMsgConfirmacao(""), 10000);
+    }
+    setSalvando(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="bg-white p-6 rounded-2xl shadow-md"
+    >
+      <h2 className="text-xl font-bold mb-4">
+        Professor — Minhas Disponibilidades
+      </h2>
+
+      <label className="block mb-2 font-medium">Seu nome</label>
+      <input
+        value={nome}
+        readOnly
+        className="border p-2 rounded w-full mb-3 bg-gray-100 text-gray-600"
+      />
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        <button
+          onClick={handleSelectAllTurmas}
+          className="bg-blue-300 px-3 py-1 rounded hover:bg-gray-400"
+        >
+          {minhasTurmas.length === TURMAS.length ? "Desmarcar Todas as Turmas" : "Selecionar Todas as Turmas"}
+        </button>
+
+      </div>
+
+      <label className="block mb-2 font-medium">Turmas que leciona</label>
+      <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {turmasDoProfessor.map((t) => (
+          <label key={t} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={minhasTurmas.includes(t)}
+              onChange={() => toggleTurma(t)}
+            />
+            <span>{t}</span>
+          </label>
+        ))}
+      </div>
+
+      {minhasTurmas.length > 0 && (
+        <>
+          <div className="flex justify-between items-center mb-2">
+            <label className="block font-medium">Disciplina por turma</label>
+          </div>
+          <button
+            onClick={handleApplyDisciplineToAll}
+            className="bg-blue-300 px-3 py-1 rounded hover:bg-blue-400"
+          >
+            {minhasTurmas.length > 0 &&
+              minhasTurmas.every(
+                (t) => disciplinaByTurma[t] === disciplinaByTurma[minhasTurmas[0]] && disciplinaByTurma[minhasTurmas[0]] !== ""
+              )
+              ? "Limpar Disciplinas de Todas as Turmas"
+              : "Mesma Disciplina para Todas as Turmas"}
+          </button>
+          <div className="mb-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+            {turmasDoProfessor.filter(t => minhasTurmas.includes(t)).map((t) => (
+              <div key={t} className="flex gap-2 items-center">
+                <div className="w-24 font-medium">{t}</div>
+                <select
+                  value={disciplinaByTurma[t] || ""}
+                  onChange={(e) =>
+                    setDisciplinaByTurma((p) => ({ ...p, [t]: e.target.value }))
+                  }
+                  className="border p-2 rounded w-full"
+                >
+                  <option value="">Escolha disciplina</option>
+                  {disciplinasDoProfessor.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <label className="block mb-2 font-medium">Marque os horários disponíveis</label>
+      <div className="mb-4 flex gap-4 overflow-x-auto pb-4">
+        {DAYS_OF_WEEK.map((dia) => {
+          const areAllSelected = TIME_SLOTS.every((hora) =>
+            (slotsMap[dia] || []).includes(hora)
+          );
+          return (
+            <div
+              key={dia}
+              className="border p-3 rounded min-w-[150px] flex-shrink-0"
+            >
+              <h4 className="font-semibold mb-2 text-center">{dia}</h4>
+              <div className="flex flex-col gap-2">
+                {TIME_SLOTS.map((hora) => (
+                  <label key={hora} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={(slotsMap[dia] || []).includes(hora)}
+                      onChange={() => toggleHora(dia, hora)}
+                    />
+                    <span className="text-sm">{hora}</span>
+                  </label>
+                ))}
+              </div>
+              <button
+                onClick={() => handleToggleAllDay(dia)}
+                className="mt-2 w-full bg-blue-300 text-black-800 text-xs p-1 rounded hover:bg-blue-400"
+              >
+                {areAllSelected ? "Desmarcar Todos" : "Marcar Todos"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ✅ Mensagem de confirmação animada */}
+      <AnimatePresence mode="wait">
+        {msgConfirmacao && (
+          <motion.div
+            key={msgConfirmacao} // força re-render quando mudar de sucesso -> erro
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className={`mb-3 p-2 rounded text-white font-medium ${msgConfirmacao.startsWith("✅") ? "bg-green-600" : "bg-red-600"
+              }`}
+          >
+            {msgConfirmacao}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <button
+        onClick={handleSaveDisponibilidades}
+        className="w-full bg-green-600 text-white rounded p-3 hover:bg-green-700 font-bold"
+      >
+        Salvar Disponibilidades
+      </button>
+
+      <h3 className="text-xl font-bold mt-6 mb-3">
+        Meus Horários de Aula (Publicados)
+      </h3>
+      {meusHorarios.length === 0 && (
+        <p className="text-gray-600">Nenhuma aula publicada para você ainda.</p>
+      )}
+      {meusHorarios.length > 0 && (
+        <ScheduleGrid
+          schedule={{
+            entries: meusHorarios.flatMap(h => h.entries)
+          }}
+          turma="Minhas Turmas"
+          hideHeader={false}
+          showTurmaInCell={true}
+        />
+      )}
+    </motion.div>
+  );
+}
+
+function AlunoDashboard({ turma }) {
+  const [schedule, setSchedule] = useState(null);
+  useEffect(() => {
+    if (!turma) return;
+    const docRef = doc(db, "artifacts/default-app-id/public/data/schedules", turma);
+    const unsub = onSnapshot(docRef, (snap) => {
+      setSchedule(snap.exists() && snap.data().published ? { ...snap.data(), turma } : null);
+    });
+    return () => unsub();
+  }, [turma]);
+  if (!schedule) return <div className="bg-white p-6 rounded shadow-md">O horário da sua turma ainda não foi publicado.</div>;
+  return <ScheduleGrid schedule={schedule} turma={turma} />;
+}
+
+export default function App() {
+  const [authReady, setAuthReady] = useState(false);
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState("");
+  const [password, setPassword] = useState("");
+  const [turmaInput, setTurmaInput] = useState("");
+  const [professorNameInput, setProfessorNameInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (!u) {
+        signInAnonymously(auth).catch((err) => console.error("Erro auth anon:", err));
+      }
+      setAuthReady(true);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleLogin = (e) => {
+    e?.preventDefault();
+    if (!role) return alert("Escolha um tipo de acesso.");
+    if (role === "aluno") {
+      const turma = (turmaInput || "").toUpperCase().trim();
+      if (!turma) return alert("Por favor, digite sua turma (ex: PI01)");
+      if (!TURMAS.includes(turma)) return alert(`A turma "${turma}" não existe.`);
+      return setUser({ role: "aluno", turma });
+    }
+    const senhas = { admin: "admin123", professor: "prof123" };
+    if (password !== senhas[role]) return alert("Senha incorreta.");
+    if (role === "professor" && !professorNameInput) return alert("Por favor, selecione o seu nome.");
+    setUser({ role, professorName: professorNameInput });
+    setPassword("");
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setRole("");
+    setPassword("");
+    setTurmaInput("");
+    setProfessorNameInput("");
+  };
+
+  if (!authReady) return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+
+  if (!user) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen bg-gray-100">
+        <motion.div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="text-3xl font-bold text-center mb-2">Portal de Horários</h1>
+          <p className="text-center text-gray-600 mb-4">Data de hoje: {new Date().toLocaleDateString("pt-PT")}</p>
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <select value={role} onChange={(e) => setRole(e.target.value)} className="border p-3 rounded-xl" required>
+              <option value="">Selecione o tipo de acesso</option>
+              <option value="admin">Administração</option>
+              <option value="professor">Professores</option>
+              <option value="aluno">Alunos</option>
+            </select>
+
+            {role === "aluno" && (<input value={turmaInput} onChange={(e) => setTurmaInput(e.target.value)} placeholder="Digite sua turma (ex: PI01)" className="border p-3 rounded-xl" required />)}
+
+            {role === "professor" && (
+              <>
+                <select value={professorNameInput} onChange={(e) => setProfessorNameInput(e.target.value)} className="border p-3 rounded-xl" required>
+                  <option value="">Selecione seu nome</option>
+                  {PROFESSORES_EXEMPLO.map((p) => (<option key={p} value={p}>{p}</option>))}
+                </select>
+                <div className="relative">
+                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha" className="border p-3 rounded-xl w-full pr-10" required />
+                  <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">{showPassword ? "Ocultar" : "Exibir"}</button>
+                </div>
+              </>
+            )}
+
+            {role === "admin" && (
+              <div className="relative">
+                <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha" className="border p-3 rounded-xl w-full pr-10" required />
+                <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">{showPassword ? "Ocultar" : "Exibir"}</button>
+              </div>
+            )}
+
+            <button type="submit" className="bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700">Entrar</button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Portal de Horários — {user.role.toUpperCase()}</h1>
+        <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-xl">Sair</button>
+      </div>
+      <div className="max-w-7xl mx-auto">
+        {user.role === "admin" && <AdminDashboard onLogout={handleLogout} />}
+        {user.role === "professor" && <ProfessorDashboard professorNameFromLogin={user.professorName} onLogout={handleLogout} />}
+        {user.role === "aluno" && <AlunoDashboard turma={user.turma} onLogout={handleLogout} />}
+      </div>
+    </div>
+  );
+}

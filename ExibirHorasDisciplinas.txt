@@ -1,0 +1,110 @@
+Curso: Programação Informática
+
+
+    Turmas: PI01, PI02;
+
+    PI01: 10º Ano {
+        Algoritmos {
+            Joao Leite
+            150 horas
+        };
+        Fundamentos C/C++{
+            Rui Silva
+            100 horas
+        };
+        Visual Basic{
+            Joao Leite
+            30 horas
+        };
+        TIC{
+            Rui Silva
+            25 horas
+        };
+    }
+
+    PI02: 10º Ano {
+        Algoritmos {
+            Joao Leite
+            150 horas
+        };
+        Fundamentos C/C++{
+            Rui Silva
+            100 horas
+        };
+        Visual Basic{
+            Joao Leite
+            30 horas
+        };
+        TIC{
+            Rui Silva
+            25 horas
+        };
+    }
+
+    PI01: 11º Ano {
+        C / C++ Avançado{
+            Rui Silva
+            170 horas
+        };
+        C# Avançado{
+            Rui Silva
+            110 horas
+        };
+        Estrutura de Dados{
+            Rui Silva
+            50 horas
+        };
+        Desenvolvimento de Aplicações Web{
+            Telmo Baldaia
+            180 horas
+        };
+        Estágio Formativo{
+            Rui Silva
+            240 horas
+        };
+    }
+
+    PI02: 11º Ano {
+        C / C++ Avançado{
+            Rui Silva
+            170 horas
+        };
+        C# Avançado{
+            Rui Silva
+            110 horas
+        };
+        Estrutura de Dados{
+            Rui Silva
+            50 horas
+        };
+        Desenvolvimento de Aplicações Web{
+            Telmo Baldaia
+            180 horas
+        };
+        Estágio Formativo{
+            Rui Silva
+            240 horas
+        };
+    }
+
+    PI01: 12º Ano {
+        Fundamentos em Python{
+            Rui Silva
+            320 horas
+        };
+        Estágio Formativo{
+            Rui Silva
+            450 horas
+        };
+    }
+
+    PI02: 12º Ano {
+        Fundamentos em Python{
+            Rui Silva
+            320 horas
+        };
+        Estágio Formativo{
+            Rui Silva
+            450 horas
+        };
+    }
