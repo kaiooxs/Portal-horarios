@@ -132,6 +132,8 @@ function AdminDashboard() {
               <tr className="text-center">
                 <th className="px-3 py-2 border font-semibold">Professor</th>
                 <th className="px-3 py-2 border font-semibold">Última Atualização</th>
+                <th className="px-3 py-2 border font-semibold">Turmas</th>
+                <th className="px-3 py-2 border font-semibold">Disponibilidades</th>
                 <th className="px-3 py-2 border font-semibold">Almoços</th>
                 <th className="px-3 py-2 border font-semibold">Status</th>
               </tr>
@@ -139,13 +141,36 @@ function AdminDashboard() {
             <tbody>
               {PROFESSORES_EXEMPLO.map((nome) => {
                 const prof = availabilities.find((p) => p.nome === nome);
+                const totalSlots = (prof?.slots || []).length;
+                const turmasCount = (prof?.turmas || []).length;
+                
                 return (
                   <tr key={nome} className="text-center hover:bg-blue-50 transition-colors">
                     <td className="border px-3 py-2 font-medium">{nome}</td>
                     <td className="border px-3 py-2 text-xs">
                       {prof?.lastUpdated?.seconds
                         ? new Date(prof.lastUpdated.seconds * 1000).toLocaleString("pt-PT")
+                        : prof?.lastUpdated?.toDate
+                        ? prof.lastUpdated.toDate().toLocaleString("pt-PT")
                         : "Nunca"}
+                    </td>
+                    <td className="border px-3 py-2 text-xs">
+                      {turmasCount > 0 ? (
+                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                          {turmasCount} turma{turmasCount > 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Nenhuma</span>
+                      )}
+                    </td>
+                    <td className="border px-3 py-2 text-xs">
+                      {totalSlots > 0 ? (
+                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+                          {totalSlots} slot{totalSlots > 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Nenhum</span>
+                      )}
                     </td>
                     <td className="border px-3 py-2 text-xs">
                       {(prof?.almocosAgendados || []).length > 0
@@ -174,6 +199,9 @@ function AdminDashboard() {
         <div className="md:hidden space-y-3">
           {PROFESSORES_EXEMPLO.map((nome) => {
             const prof = availabilities.find((p) => p.nome === nome);
+            const totalSlots = (prof?.slots || []).length;
+            const turmasCount = (prof?.turmas || []).length;
+            
             return (
               <div key={nome} className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm">
                 <div className="flex justify-between items-start mb-2">
@@ -193,7 +221,17 @@ function AdminDashboard() {
                     <span className="font-semibold">📅 Última atualização:</span>{" "}
                     {prof?.lastUpdated?.seconds
                       ? new Date(prof.lastUpdated.seconds * 1000).toLocaleString("pt-PT")
+                      : prof?.lastUpdated?.toDate
+                      ? prof.lastUpdated.toDate().toLocaleString("pt-PT")
                       : "Nunca"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">📚 Turmas:</span>{" "}
+                    {turmasCount > 0 ? `${turmasCount} turma${turmasCount > 1 ? 's' : ''}` : "Nenhuma"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">⏰ Disponibilidades:</span>{" "}
+                    {totalSlots > 0 ? `${totalSlots} slot${totalSlots > 1 ? 's' : ''}` : "Nenhum"}
                   </p>
                   <p>
                     <span className="font-semibold">🍽️ Almoços:</span>{" "}

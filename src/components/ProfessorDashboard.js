@@ -370,20 +370,24 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                           </tr>
                         </thead>
                         <tbody>
-                          {disciplinasDaTurmaAtual.map((d, idx) => (
-                            <tr key={idx} className="hover:bg-blue-50 transition-colors">
-                              <td className="border px-3 py-2">{d.disciplina}</td>
-                              <td className="border px-3 py-2 text-center font-bold">
-                                <span className={`inline-block px-3 py-1 rounded-full ${
-                                  d.horas > 20 ? "bg-green-100 text-green-700" :
-                                  d.horas > 10 ? "bg-yellow-100 text-yellow-700" :
-                                  "bg-red-100 text-red-700"
-                                }`}>
-                                  {d.horas}h
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
+                          {disciplinasDaTurmaAtual.map((d, idx) => {
+                            const horasRestantes = d.horasRestantes ?? d.horas ?? 0;
+                            return (
+                              <tr key={idx} className="hover:bg-blue-50 transition-colors">
+                                <td className="border px-3 py-2">{d.disciplina}</td>
+                                <td className="border px-3 py-2 text-center font-bold">
+                                  <span className={`inline-block px-3 py-1 rounded-full ${
+                                    horasRestantes > 20 ? "bg-green-100 text-green-700" :
+                                    horasRestantes > 10 ? "bg-yellow-100 text-yellow-700" :
+                                    horasRestantes > 0 ? "bg-red-100 text-red-700" :
+                                    "bg-gray-100 text-gray-700"
+                                  }`}>
+                                    {horasRestantes}h
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
