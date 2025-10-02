@@ -371,7 +371,14 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                         </thead>
                         <tbody>
                           {disciplinasDaTurmaAtual.map((d, idx) => {
-                            const horasRestantes = d.horasRestantes ?? d.horas ?? 0;
+                            // Tentar múltiplos campos possíveis para horas
+                            const horasRestantes = d.horasRestantes ?? d.horas ?? d.horasSemanais ?? d.cargaHoraria ?? 0;
+                            
+                            // Debug: mostrar estrutura do objeto no console (apenas em desenvolvimento)
+                            if (horasRestantes === 0 && process.env.NODE_ENV === 'development') {
+                              console.log('Disciplina sem horas:', d);
+                            }
+                            
                             return (
                               <tr key={idx} className="hover:bg-blue-50 transition-colors">
                                 <td className="border px-3 py-2">{d.disciplina}</td>
@@ -382,7 +389,7 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                                     horasRestantes > 0 ? "bg-red-100 text-red-700" :
                                     "bg-gray-100 text-gray-700"
                                   }`}>
-                                    {horasRestantes}h
+                                    {horasRestantes > 0 ? `${horasRestantes}h` : "Sem dados"}
                                   </span>
                                 </td>
                               </tr>

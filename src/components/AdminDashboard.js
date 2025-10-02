@@ -155,22 +155,14 @@ function AdminDashboard() {
                         : "Nunca"}
                     </td>
                     <td className="border px-3 py-2 text-xs">
-                      {turmasCount > 0 ? (
-                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
-                          {turmasCount} turma{turmasCount > 1 ? 's' : ''}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">Nenhuma</span>
-                      )}
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
+                        {turmasCount > 0 ? `${turmasCount} turma${turmasCount > 1 ? 's' : ''}` : "Nenhuma"}
+                      </span>
                     </td>
                     <td className="border px-3 py-2 text-xs">
-                      {totalSlots > 0 ? (
-                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
-                          {totalSlots} slot{totalSlots > 1 ? 's' : ''}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">Nenhum</span>
-                      )}
+                      <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full font-semibold">
+                        {totalSlots > 0 ? `${totalSlots} slot${totalSlots > 1 ? 's' : ''}` : "Nenhum"}
+                      </span>
                     </td>
                     <td className="border px-3 py-2 text-xs">
                       {(prof?.almocosAgendados || []).length > 0
