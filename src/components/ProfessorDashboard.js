@@ -22,11 +22,22 @@ function ProfessorDashboard({ professorNameFromLogin }) {
 
   //Buscar dados do Firebase
   const { disciplinasTurmaAno, loading: loadingDisciplinas } = useDisciplinasTurmaAno();
+  const [erroCarregamento, setErroCarregamento] = useState(false);
   
   // Debug: Verificar dados carregados
   useEffect(() => {
     if (!loadingDisciplinas) {
       console.log("[ProfessorDashboard] Disciplinas carregadas:", disciplinasTurmaAno);
+      console.log("[ProfessorDashboard] Total de turmas com dados:", Object.keys(disciplinasTurmaAno).length);
+      
+      // Verificar se há dados
+      if (Object.keys(disciplinasTurmaAno).length === 0) {
+        console.warn("[ProfessorDashboard] ⚠️ AVISO: Nenhuma disciplina encontrada no Firebase!");
+        console.warn("[ProfessorDashboard] Verifique se a coleção 'disciplinas_turma_ano' existe no Firestore");
+        setErroCarregamento(true);
+      } else {
+        setErroCarregamento(false);
+      }
     }
   }, [disciplinasTurmaAno, loadingDisciplinas]);
 
@@ -345,6 +356,32 @@ function ProfessorDashboard({ professorNameFromLogin }) {
             <div className="animate-spin inline-block w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full"></div>
             <p className="mt-2">Carregando disciplinas...</p>
           </div>
+        ) : erroCarregamento ? (
+          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mt-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h4 className="font-bold text-yellow-800 mb-2">Dados de Disciplinas Não Encontrados</h4>
+                <p className="text-sm text-yellow-700 mb-2">
+                  A coleção <code className="bg-yellow-100 px-2 py-1 rounded">disciplinas_turma_ano</code> não foi encontrada no Firebase.
+                </p>
+                <p className="text-sm text-yellow-700 mb-3">
+                  Isso significa que as informações sobre disciplinas, professores e horas restantes ainda não foram configuradas no banco de dados.
+                </p>
+                <details className="text-xs text-yellow-600">
+                  <summary className="cursor-pointer font-semibold hover:text-yellow-800">
+                    🔧 Como resolver (para administradores)
+                  </summary>
+                  <div className="mt-2 pl-4 border-l-2 border-yellow-300">
+                    <p className="mb-1">1. Acesse o Firebase Console</p>
+                    <p className="mb-1">2. Vá em Firestore Database</p>
+                    <p className="mb-1">3. Crie a coleção: <code className="bg-yellow-100 px-1 rounded">artifacts/default-app-id/public/data/disciplinas_turma_ano</code></p>
+                    <p>4. Adicione documentos para cada turma com as disciplinas e professores</p>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
         ) : turmaSelecionada.length > 0 ? (
           <div className="space-y-4 mt-4">
             {turmaSelecionada.map((turma) => {
@@ -371,12 +408,25 @@ function ProfessorDashboard({ professorNameFromLogin }) {
 
               // Debug: mostrar informações para diagnóstico
               if (turmaSelecionada.length > 0 && disciplinasTurmaAno[turma]) {
+                const professoresDaTurma = (disciplinasTurmaAno[turma].disciplinas || []).map(d => d.professor);
+                const professoresNormalizados = professoresDaTurma.map(p => normalizarNome(p));
+                const nomeNormalizado = normalizarNome(nome);
+                
                 console.log(`[DEBUG] Turma ${turma}:`, {
                   professorLogado: nome,
+                  professorNormalizado: nomeNormalizado,
                   totalDisciplinas: (disciplinasTurmaAno[turma].disciplinas || []).length,
                   disciplinasEncontradas: disciplinasDaTurmaAtual.length,
-                  professoresDaTurma: (disciplinasTurmaAno[turma].disciplinas || []).map(d => d.professor)
+                  professoresDaTurma: professoresDaTurma,
+                  professoresNormalizados: professoresNormalizados,
+                  match: professoresNormalizados.includes(nomeNormalizado)
                 });
+                
+                // Aviso se não encontrar disciplinas
+                if (disciplinasDaTurmaAtual.length === 0 && professoresDaTurma.length > 0) {
+                  console.warn(`[DEBUG] ⚠️ Professor "${nome}" não encontrado na turma ${turma}`);
+                  console.warn(`[DEBUG] Professores disponíveis:`, professoresDaTurma);
+                }
               }
 
               return (

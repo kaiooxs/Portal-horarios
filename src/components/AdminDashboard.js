@@ -5,6 +5,7 @@ import { doc, setDoc, onSnapshot, collection, updateDoc } from "firebase/firesto
 import { DAYS_OF_WEEK, TIME_SLOTS, TURMAS, PROFESSORES_EXEMPLO } from "../constants";
 import { downloadSchedulePDF } from "../utils/pdfExport";
 import MenuAdmin from "./MenuAdmin";
+import SeedDisciplinasButton from "./SeedDisciplinasButton";
 
 function AdminDashboard() {
   const [schedules, setSchedules] = useState({});
@@ -14,11 +15,30 @@ function AdminDashboard() {
 
   useEffect(() => {
     let unsubscribers = [];
+    let schedulesCache = {};
+    let loadedCount = 0;
+    const totalToLoad = TURMAS.length + 1; // turmas + availabilities
+
+    // Carregar schedules com batching para melhor performance
     TURMAS.forEach((t) => {
       const docRef = doc(db, `artifacts/default-app-id/public/data/schedules`, t);
       const unsub = onSnapshot(docRef, (snap) => {
-        if (snap.exists()) setSchedules((p) => ({ ...p, [t]: snap.data() }));
-        else setSchedules((p) => ({ ...p, [t]: { entries: [], published: false } }));
+        if (snap.exists()) {
+          schedulesCache[t] = snap.data();
+        } else {
+          schedulesCache[t] = { entries: [], published: false };
+        }
+        
+        loadedCount++;
+        
+        // Atualizar estado apenas quando todos os dados estiverem carregados
+        // ou a cada 5 turmas para dar feedback visual
+        if (loadedCount >= totalToLoad || loadedCount % 5 === 0) {
+          setSchedules({ ...schedulesCache });
+        }
+      }, (error) => {
+        console.error(`[AdminDashboard] Erro ao carregar schedule da turma ${t}:`, error);
+        loadedCount++;
       });
       unsubscribers.push(unsub);
     });
@@ -27,15 +47,33 @@ function AdminDashboard() {
       collection(db, `artifacts/default-app-id/public/data/availabilities`),
       (snap) => {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        console.log("[AdminDashboard] Disponibilidades carregadas:", list);
+        console.log("[AdminDashboard] Disponibilidades carregadas:", list.length, "professores");
         setAvailabilities(list);
+        loadedCount++;
+        
+        // Marcar como carregado quando availabilities estiver pronto
+        if (loadedCount >= totalToLoad) {
+          setLoading(false);
+        }
+      },
+      (error) => {
+        console.error("[AdminDashboard] Erro ao carregar availabilities:", error);
         setLoading(false);
       }
     );
 
     unsubscribers.push(unsubAvail);
 
-    return () => unsubscribers.forEach((u) => u && u());
+    // Timeout de segurança: se demorar mais de 10 segundos, mostrar interface mesmo assim
+    const timeoutId = setTimeout(() => {
+      console.warn("[AdminDashboard] Timeout atingido, mostrando interface");
+      setLoading(false);
+    }, 10000);
+
+    return () => {
+      unsubscribers.forEach((u) => u && u());
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const setCell = async (turma, dia, hora, professorName, disciplina) => {
@@ -80,7 +118,13 @@ function AdminDashboard() {
     return (
       <div className="bg-white p-6 rounded-2xl shadow-md text-center">
         <div className="animate-spin inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
-        <p className="text-lg font-semibold text-gray-700">Carregando dados do admin...</p>
+        <p className="text-lg font-semibold text-gray-700 mb-2">Carregando dados do admin...</p>
+        <p className="text-sm text-gray-500">
+          Carregando {TURMAS.length} turmas e disponibilidades dos professores
+        </p>
+        <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+          <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+        </div>
       </div>
     );
   }
@@ -119,6 +163,11 @@ function AdminDashboard() {
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 text-gray-800">
             👨‍💼 Admin — Gerir Horários
           </h2>
+
+      {/* Botão para popular disciplinas */}
+      <div className="mb-6">
+        <SeedDisciplinasButton />
+      </div>
 
       {/*Status de Disponibilidades - RESPONSIVO */}
       <div className="mb-6">
