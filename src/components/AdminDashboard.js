@@ -6,6 +6,7 @@ import { DAYS_OF_WEEK, TIME_SLOTS, TURMAS, PROFESSORES_EXEMPLO } from "../consta
 import { downloadSchedulePDF } from "../utils/pdfExport";
 import MenuAdmin from "./MenuAdmin";
 import SeedDisciplinasButton from "./SeedDisciplinasButton";
+import MigrateDisciplinasButton from "./MigrateDisciplinasButton";
 
 function AdminDashboard() {
   const [schedules, setSchedules] = useState({});
@@ -164,8 +165,12 @@ function AdminDashboard() {
             👨‍💼 Admin — Gerir Horários
           </h2>
 
-      {/* Botão para popular disciplinas */}
-      <div className="mb-6">
+      {/* Botões para gerenciar disciplinas */}
+      <div className="mb-6 space-y-4">
+        <MigrateDisciplinasButton />
+        <div className="text-center text-sm text-gray-500">
+          <p>ou</p>
+        </div>
         <SeedDisciplinasButton />
       </div>
 
