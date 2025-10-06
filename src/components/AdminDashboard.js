@@ -27,6 +27,7 @@ function AdminDashboard() {
       collection(db, `artifacts/default-app-id/public/data/availabilities`),
       (snap) => {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        console.log("[AdminDashboard] Disponibilidades carregadas:", list);
         setAvailabilities(list);
         setLoading(false);
       }
@@ -132,17 +133,20 @@ function AdminDashboard() {
               <tr className="text-center">
                 <th className="px-3 py-2 border font-semibold">Professor</th>
                 <th className="px-3 py-2 border font-semibold">Última Atualização</th>
-                <th className="px-3 py-2 border font-semibold">Turmas</th>
-                <th className="px-3 py-2 border font-semibold">Disponibilidades</th>
                 <th className="px-3 py-2 border font-semibold">Almoços</th>
                 <th className="px-3 py-2 border font-semibold">Status</th>
               </tr>
             </thead>
             <tbody>
               {PROFESSORES_EXEMPLO.map((nome) => {
-                const prof = availabilities.find((p) => p.nome === nome);
-                const totalSlots = (prof?.slots || []).length;
-                const turmasCount = (prof?.turmas || []).length;
+                // Buscar professor pelo ID normalizado ou pelo nome
+                const docId = nome.toLowerCase().replace(/\s+/g, "_");
+                const prof = availabilities.find((p) => p.id === docId || p.nome === nome);
+                
+                // Debug para verificar se o professor foi encontrado
+                if (!prof) {
+                  console.log(`[AdminDashboard] Professor não encontrado: ${nome} (ID: ${docId})`);
+                }
                 
                 return (
                   <tr key={nome} className="text-center hover:bg-blue-50 transition-colors">
@@ -153,16 +157,6 @@ function AdminDashboard() {
                         : prof?.lastUpdated?.toDate
                         ? prof.lastUpdated.toDate().toLocaleString("pt-PT")
                         : "Nunca"}
-                    </td>
-                    <td className="border px-3 py-2 text-xs">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
-                        {turmasCount > 0 ? `${turmasCount} turma${turmasCount > 1 ? 's' : ''}` : "Nenhuma"}
-                      </span>
-                    </td>
-                    <td className="border px-3 py-2 text-xs">
-                      <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full font-semibold">
-                        {totalSlots > 0 ? `${totalSlots} slot${totalSlots > 1 ? 's' : ''}` : "Nenhum"}
-                      </span>
                     </td>
                     <td className="border px-3 py-2 text-xs">
                       {(prof?.almocosAgendados || []).length > 0
@@ -190,9 +184,14 @@ function AdminDashboard() {
         {/* Mobile: Cards */}
         <div className="md:hidden space-y-3">
           {PROFESSORES_EXEMPLO.map((nome) => {
-            const prof = availabilities.find((p) => p.nome === nome);
-            const totalSlots = (prof?.slots || []).length;
-            const turmasCount = (prof?.turmas || []).length;
+            // Buscar professor pelo ID normalizado ou pelo nome
+            const docId = nome.toLowerCase().replace(/\s+/g, "_");
+            const prof = availabilities.find((p) => p.id === docId || p.nome === nome);
+            
+            // Debug para verificar se o professor foi encontrado
+            if (!prof) {
+              console.log(`[AdminDashboard Mobile] Professor não encontrado: ${nome} (ID: ${docId})`);
+            }
             
             return (
               <div key={nome} className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm">
@@ -216,14 +215,6 @@ function AdminDashboard() {
                       : prof?.lastUpdated?.toDate
                       ? prof.lastUpdated.toDate().toLocaleString("pt-PT")
                       : "Nunca"}
-                  </p>
-                  <p>
-                    <span className="font-semibold">📚 Turmas:</span>{" "}
-                    {turmasCount > 0 ? `${turmasCount} turma${turmasCount > 1 ? 's' : ''}` : "Nenhuma"}
-                  </p>
-                  <p>
-                    <span className="font-semibold">⏰ Disponibilidades:</span>{" "}
-                    {totalSlots > 0 ? `${totalSlots} slot${totalSlots > 1 ? 's' : ''}` : "Nenhum"}
                   </p>
                   <p>
                     <span className="font-semibold">🍽️ Almoços:</span>{" "}

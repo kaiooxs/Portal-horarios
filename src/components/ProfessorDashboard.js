@@ -17,11 +17,18 @@ function ProfessorDashboard({ professorNameFromLogin }) {
   const [msgConfirmacao, setMsgConfirmacao] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [salvamentoManual, setSalvamentoManual] = useState(false);
-  const [turmaSelecionada, setTurmaSelecionada] = useState([]); // 🔥 Agora é array para múltiplas turmas
-  const [mostrarMenu, setMostrarMenu] = useState(false); // 🔥 Toggle para cardápio
+  const [turmaSelecionada, setTurmaSelecionada] = useState([]);
+  const [mostrarMenu, setMostrarMenu] = useState(false);
 
-  // 🔥 Buscar dados do Firebase
+  //Buscar dados do Firebase
   const { disciplinasTurmaAno, loading: loadingDisciplinas } = useDisciplinasTurmaAno();
+  
+  // Debug: Verificar dados carregados
+  useEffect(() => {
+    if (!loadingDisciplinas) {
+      console.log("[ProfessorDashboard] Disciplinas carregadas:", disciplinasTurmaAno);
+    }
+  }, [disciplinasTurmaAno, loadingDisciplinas]);
 
   // Definição de turmas por curso
   const Curso_Cabeleireira = ["CC03", "CC04", "CC05"];
@@ -259,7 +266,7 @@ function ProfessorDashboard({ professorNameFromLogin }) {
         </button>
       </div>
 
-      {/* 🔥 Conteúdo condicional */}
+      {/*Conteúdo condicional */}
       {mostrarMenu ? (
         <MenuSemanal />
       ) : (
@@ -279,7 +286,7 @@ function ProfessorDashboard({ professorNameFromLogin }) {
             className="border p-2 rounded w-full mb-3 bg-gray-100 text-gray-600"
           />
 
-      {/* 🔥 NOVA SEÇÃO: Seleção Múltipla de Turmas para Comparação */}
+      {/*NOVA SEÇÃO: Seleção Múltipla de Turmas para Comparação */}
       <div className="mb-6 bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
         <h3 className="font-bold mb-3 text-lg flex items-center gap-2">
           📊 Comparar Disciplinas e Horas entre Turmas
@@ -341,13 +348,36 @@ function ProfessorDashboard({ professorNameFromLogin }) {
         ) : turmaSelecionada.length > 0 ? (
           <div className="space-y-4 mt-4">
             {turmaSelecionada.map((turma) => {
+              // Buscar disciplinas da turma com comparação melhorada
               const disciplinasDaTurmaAtual = disciplinasTurmaAno[turma]
                 ? (disciplinasTurmaAno[turma].disciplinas || []).filter((d) => {
-                    const profNormalizado = normalizarNome(d.professor);
-                    const nomeNormalizado = normalizarNome(nome);
-                    return profNormalizado === nomeNormalizado;
+                    if (!d.professor || !nome) return false;
+                    
+                    // Normalizar ambos os nomes (remove acentos, lowercase, trim)
+                    const profNormalizado = normalizarNome(d.professor.trim());
+                    const nomeNormalizado = normalizarNome(nome.trim());
+                    
+                    // Comparação exata
+                    if (profNormalizado === nomeNormalizado) return true;
+                    
+                    // Comparação parcial (caso o nome esteja incompleto)
+                    if (profNormalizado.includes(nomeNormalizado) || nomeNormalizado.includes(profNormalizado)) {
+                      return true;
+                    }
+                    
+                    return false;
                   })
                 : [];
+
+              // Debug: mostrar informações para diagnóstico
+              if (turmaSelecionada.length > 0 && disciplinasTurmaAno[turma]) {
+                console.log(`[DEBUG] Turma ${turma}:`, {
+                  professorLogado: nome,
+                  totalDisciplinas: (disciplinasTurmaAno[turma].disciplinas || []).length,
+                  disciplinasEncontradas: disciplinasDaTurmaAtual.length,
+                  professoresDaTurma: (disciplinasTurmaAno[turma].disciplinas || []).map(d => d.professor)
+                });
+              }
 
               return (
                 <div key={turma} className="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500">
@@ -374,11 +404,6 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                             // Tentar múltiplos campos possíveis para horas
                             const horasRestantes = d.horasRestantes ?? d.horas ?? d.horasSemanais ?? d.cargaHoraria ?? 0;
                             
-                            // Debug: mostrar estrutura do objeto no console (apenas em desenvolvimento)
-                            if (horasRestantes === 0 && process.env.NODE_ENV === 'development') {
-                              console.log('Disciplina sem horas:', d);
-                            }
-                            
                             return (
                               <tr key={idx} className="hover:bg-blue-50 transition-colors">
                                 <td className="border px-3 py-2">{d.disciplina}</td>
@@ -400,7 +425,12 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                     </div>
                   ) : (
                     <div className="text-gray-500 text-center py-4 bg-gray-50 rounded-lg">
-                      ℹ️ Nenhuma disciplina atribuída a você para esta turma.
+                      <p className="mb-2">ℹ️ Nenhuma disciplina atribuída a você para esta turma.</p>
+                      {disciplinasTurmaAno[turma] && (disciplinasTurmaAno[turma].disciplinas || []).length > 0 && (
+                        <p className="text-xs text-gray-400">
+                          Professores nesta turma: {(disciplinasTurmaAno[turma].disciplinas || []).map(d => d.professor).filter((v, i, a) => a.indexOf(v) === i).join(", ")}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -479,7 +509,7 @@ function ProfessorDashboard({ professorNameFromLogin }) {
 
       <label className="block mb-2 font-medium text-lg">📅 Marque os horários disponíveis</label>
       
-      {/* 🔥 LAYOUT RESPONSIVO: Grid em desktop, scroll horizontal em mobile */}
+      {/*LAYOUT RESPONSIVO: Grid em desktop, scroll horizontal em mobile */}
       <div className="mb-4">
         {/* Desktop: Grid de 5 colunas */}
         <div className="hidden md:grid md:grid-cols-5 gap-3">

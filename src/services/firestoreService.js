@@ -87,6 +87,7 @@ export const subscribeToDisciplinasTurmaAno = (callback) => {
     snapshot.docs.forEach(doc => {
       data[doc.id] = doc.data();
     });
+    console.log("[FirestoreService] Disciplinas por turma/ano carregadas:", data);
     callback(data);
   });
 };
@@ -165,6 +166,7 @@ export const subscribeToAvailability = (professorId, callback) => {
 export const subscribeToAllAvailabilities = (callback) => {
   return onSnapshot(collection(db, FIRESTORE_PATHS.AVAILABILITIES), (snapshot) => {
     const availabilities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    console.log("[FirestoreService] Disponibilidades carregadas:", availabilities);
     callback(availabilities);
   });
 };
