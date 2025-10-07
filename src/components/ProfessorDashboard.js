@@ -342,37 +342,6 @@ function ProfessorDashboard({ professorNameFromLogin }) {
           </button>
         </div>
         
-        {/* Debug Info - Remover após resolver o problema */}
-        {!loadingDisciplinas && Object.keys(disciplinasTurmaAno).length > 0 && (
-          <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs">
-            <details>
-              <summary className="cursor-pointer font-semibold text-yellow-800">
-                🔍 Debug: Informações de Carregamento
-              </summary>
-              <div className="mt-2 space-y-1 text-yellow-700">
-                <p><strong>Professor logado:</strong> {nome}</p>
-                <p><strong>Nome normalizado:</strong> {normalizarNome(nome)}</p>
-                <p><strong>Total de turmas carregadas:</strong> {Object.keys(disciplinasTurmaAno).length}</p>
-                <p><strong>Turmas disponíveis:</strong> {Object.keys(disciplinasTurmaAno).join(", ")}</p>
-                {turmaSelecionada.length > 0 && turmaSelecionada[0] && disciplinasTurmaAno[turmaSelecionada[0]] && (
-                  <>
-                    <p className="mt-2"><strong>Exemplo - Turma {turmaSelecionada[0]}:</strong></p>
-                    <p><strong>Professores nesta turma:</strong></p>
-                    <ul className="pl-4 list-disc">
-                      {(disciplinasTurmaAno[turmaSelecionada[0]].disciplinas || []).map((d, i) => (
-                        <li key={i}>
-                          {d.professor} (normalizado: {normalizarNome(d.professor)})
-                          {normalizarNome(d.professor) === normalizarNome(nome) && " ✅ MATCH!"}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            </details>
-          </div>
-        )}
-        
         {/* Seleção de múltiplas turmas */}
         <div className="mb-3">
           <label className="block mb-2 font-medium text-sm">

@@ -25,19 +25,11 @@ function MenuAdmin() {
       (snap) => {
         console.log("[MenuAdmin] 📡 onSnapshot disparado");
         console.log("[MenuAdmin] - Documento existe?", snap.exists());
-        console.log("[MenuAdmin] - Estado uploading:", uploading);
-        
-        // Não atualizar o estado se estiver fazendo upload (evita loop)
-        if (uploading) {
-          console.log("[MenuAdmin] ⏸️ Ignorando atualização durante upload");
-          return;
-        }
         
         if (snap.exists()) {
           const data = snap.data();
           console.log("[MenuAdmin] ✅ Dados recebidos do Firestore:");
           console.log("[MenuAdmin] - Número de semanas:", data.semanas?.length || 0);
-          console.log("[MenuAdmin] - Dados completos:", JSON.stringify(data, null, 2));
           setMenuData(data);
         } else {
           console.log("[MenuAdmin] ⚠️ Documento não existe no Firestore, inicializando vazio");
@@ -57,7 +49,7 @@ function MenuAdmin() {
       console.log("[MenuAdmin] 🧹 Limpando listener");
       unsub();
     };
-  }, [uploading]); // Adicionar uploading como dependência
+  }, []); // Remover dependência de uploading para evitar loop
 
   // Lidar com seleção de arquivo
   const handleFileSelect = (e) => {
@@ -147,14 +139,11 @@ function MenuAdmin() {
       console.log("[MenuAdmin] Total de semanas:", novasSemanas.length);
       console.log("[MenuAdmin] Dados a salvar:", JSON.stringify({ semanas: novasSemanas }, null, 2));
       
-      // Salvar no Firestore PRIMEIRO (sem merge para garantir que sobrescreve)
+      // Salvar no Firestore (o listener irá atualizar o estado automaticamente)
       const docRef = doc(db, "artifacts/default-app-id/public/data/menus", "current");
       await setDoc(docRef, { semanas: novasSemanas }, { merge: false });
       
       console.log("[MenuAdmin] ✅ Documento salvo no Firestore!");
-      
-      // Atualizar o estado local DEPOIS para forçar re-render
-      setMenuData({ semanas: novasSemanas });
 
       console.log("[MenuAdmin] ✅ Cardápio publicado com sucesso!");
       setMensagem("✅ Cardápio publicado com sucesso!");
