@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { auth } from "./firebaseConfig";
+import { auth, db } from "./firebaseConfig";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { doc, deleteDoc } from "firebase/firestore";
 import AdminDashboard from "./components/AdminDashboard";
 import ProfessorDashboard from "./components/ProfessorDashboard";
 import AlunoDashboard from "./components/AlunoDashboard";
 import LoginScreen from "./components/LoginScreen";
 import { getIntervaloSemanaAtual } from "./utils/helpers";
-import { saveUserToFirestore, getUserFromFirestore, updateLastLogin } from "./utils/userManager";
+import { saveUserToFirestore } from "./utils/userManager";
 
 export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -22,30 +22,8 @@ export default function App() {
         } catch (err) {
           console.error("❌ Erro ao fazer login anônimo:", err);
         }
-      } else {
-        // Usuário autenticado, tentar carregar dados do Firestore
-        try {
-          setLoadingUser(true);
-          const userData = await getUserFromFirestore(u.uid);
-          
-          if (userData) {
-            // Usuário já tem dados no Firestore, fazer login automático
-            console.log("✅ Dados do usuário carregados do Firestore:", userData);
-            setUser({
-              role: userData.role,
-              professorName: userData.name,
-              turma: userData.name,
-            });
-            
-            // Atualizar timestamp do último login
-            await updateLastLogin(u.uid);
-          }
-        } catch (err) {
-          console.error("❌ Erro ao carregar dados do usuário:", err);
-        } finally {
-          setLoadingUser(false);
-        }
       }
+      // Sempre mostrar tela de login ao recarregar a página
       setAuthReady(true);
     });
     return () => unsub();
@@ -72,19 +50,34 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     console.log("🚪 Fazendo logout...");
+    
+    try {
+      // Limpar dados do usuário do Firestore
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const userDocRef = doc(db, "artifacts/default-app-id/public/data/users", currentUser.uid);
+        
+        console.log("🗑️ Removendo dados do usuário do Firestore...");
+        await deleteDoc(userDocRef);
+        console.log("✅ Dados do usuário removidos com sucesso");
+      }
+    } catch (error) {
+      console.error("❌ Erro ao remover dados do usuário:", error);
+      // Continuar com o logout mesmo se houver erro
+    }
+    
+    // Limpar estado local
     setUser(null);
   };
 
-  if (!authReady || loadingUser) {
+  if (!authReady) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-blue-100">
         <div className="text-center">
           <div className="animate-spin inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
-          <p className="text-lg font-semibold text-gray-700">
-            {loadingUser ? "Carregando dados do usuário..." : "Carregando..."}
-          </p>
+          <p className="text-lg font-semibold text-gray-700">Carregando...</p>
         </div>
       </div>
     );

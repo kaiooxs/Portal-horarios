@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { db, storage } from "../firebaseConfig";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db } from "../firebaseConfig";
+import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
 
 function MenuAdmin() {
   const [menuData, setMenuData] = useState({
@@ -62,26 +61,26 @@ function MenuAdmin() {
       return;
     }
 
-    // Validar tamanho (máx 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert("A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.");
+    // Validar tamanho (máx 1MB para Base64)
+    if (file.size > 1 * 1024 * 1024) {
+      alert("A imagem é muito grande. Por favor, selecione uma imagem menor que 1MB.");
       return;
     }
 
-    // Criar preview
+    // Criar preview e converter para Base64
     const reader = new FileReader();
     reader.onloadend = () => {
-      setImagemPreview(reader.result);
+      setImagemPreview(reader.result); // Já está em Base64
     };
     reader.readAsDataURL(file);
   };
 
-  // Fazer upload e publicar cardápio
+  // Publicar cardápio (usando Base64)
   const publicarCardapio = async (e) => {
     e.preventDefault();
 
     if (!imagemPreview) {
-      alert("Por favor, selecione uma imagem do cardápio.");
+      alert("Por favor, selecione uma imagem da ementa.");
       return;
     }
 
@@ -90,65 +89,44 @@ function MenuAdmin() {
       return;
     }
 
-    console.log("[MenuAdmin] 🚀 Iniciando publicação do cardápio...");
+    console.log("[MenuAdmin] 🚀 Iniciando publicação da ementa (Base64)...");
     console.log("[MenuAdmin] - Data Início:", dataInicio);
     console.log("[MenuAdmin] - Data Fim:", dataFim);
-    console.log("[MenuAdmin] - Preview existe?", !!imagemPreview);
+    console.log("[MenuAdmin] - Tamanho da imagem Base64:", imagemPreview.length, "caracteres");
     
     setUploading(true);
     setMensagem("");
 
     try {
-      // Converter base64 para blob
-      console.log("[MenuAdmin] 📦 Convertendo imagem para blob...");
-      const response = await fetch(imagemPreview);
-      const blob = await response.blob();
-      console.log("[MenuAdmin] - Blob criado, tamanho:", blob.size, "bytes");
-
-      // Criar nome único para o arquivo
-      const timestamp = Date.now();
-      const fileName = `cardapio_${timestamp}.jpg`;
-      const storageRef = ref(storage, `cardapios/${fileName}`);
-      console.log("[MenuAdmin] - Nome do arquivo:", fileName);
-      console.log("[MenuAdmin] - Caminho no Storage:", `cardapios/${fileName}`);
-
-      // Upload para Firebase Storage
-      console.log("[MenuAdmin] ☁️ Fazendo upload para Firebase Storage...");
-      const uploadResult = await uploadBytes(storageRef, blob);
-      console.log("[MenuAdmin] - Upload concluído!", uploadResult.metadata.fullPath);
-      
-      // Obter URL da imagem
-      console.log("[MenuAdmin] 🔗 Obtendo URL da imagem...");
-      const imageUrl = await getDownloadURL(storageRef);
-      console.log("[MenuAdmin] - URL obtida:", imageUrl);
-
-      // Criar nova semana com a imagem
+      // Criar nova semana com a imagem em Base64
       const novaSemana = {
         dataInicio,
         dataFim,
-        imagemUrl: imageUrl,
+        imagemBase64: imagemPreview, // Salvar diretamente o Base64
         dataPublicacao: new Date().toISOString()
       };
 
-      // Adicionar à lista de semanas (mantém as anteriores)
-      // Usar o estado atual de menuData
-      const semanasAtuais = Array.isArray(menuData.semanas) ? [...menuData.semanas] : [];
+      console.log("[MenuAdmin] 📖 Lendo dados atuais do Firestore...");
+      const docRef = doc(db, "artifacts/default-app-id/public/data/menus", "current");
+      
+      // Ler o estado atual antes de salvar
+      const currentDoc = await getDoc(docRef);
+      const currentData = currentDoc.exists() ? currentDoc.data() : { semanas: [] };
+      const semanasAtuais = Array.isArray(currentData.semanas) ? [...currentData.semanas] : [];
+      
+      console.log("[MenuAdmin] - Semanas atuais no Firestore:", semanasAtuais.length);
+      
       const novasSemanas = [novaSemana, ...semanasAtuais];
 
       console.log("[MenuAdmin] 💾 Salvando no Firestore...");
       console.log("[MenuAdmin] Total de semanas:", novasSemanas.length);
-      console.log("[MenuAdmin] Dados a salvar:", JSON.stringify({ semanas: novasSemanas }, null, 2));
       
-      // Salvar no Firestore (o listener irá atualizar o estado automaticamente)
-      const docRef = doc(db, "artifacts/default-app-id/public/data/menus", "current");
+      // Salvar no Firestore
       await setDoc(docRef, { semanas: novasSemanas }, { merge: false });
       
       console.log("[MenuAdmin] ✅ Documento salvo no Firestore!");
 
-      console.log("[MenuAdmin] ✅ Cardápio publicado com sucesso!");
-      setMensagem("✅ Cardápio publicado com sucesso!");
-      
-      // Limpar formulário
+      // Limpar formulário IMEDIATAMENTE após salvar
       setImagemPreview(null);
       setDataInicio("");
       setDataFim("");
@@ -157,32 +135,36 @@ function MenuAdmin() {
         fileInput.value = "";
       }
 
+      // Mostrar mensagem de sucesso
+      setMensagem("✅ Ementa publicada com sucesso!");
+      console.log("[MenuAdmin] ✅ Ementa publicada com sucesso!");
+
       // Limpar mensagem após 3 segundos
       setTimeout(() => setMensagem(""), 3000);
     } catch (error) {
-      console.error("[MenuAdmin] ❌ Erro ao publicar cardápio:", error);
+      console.error("[MenuAdmin] ❌ Erro ao publicar ementa:", error);
       console.error("[MenuAdmin] Stack trace:", error.stack);
-      setMensagem("❌ Erro ao publicar cardápio: " + error.message);
+      setMensagem("❌ Erro ao publicar ementa: " + error.message);
       setTimeout(() => setMensagem(""), 5000);
     } finally {
-      console.log("[MenuAdmin] 🏁 Finalizando upload...");
+      console.log("[MenuAdmin] 🏁 Finalizando publicação...");
       setUploading(false);
     }
   };
 
   // Remover semana
   const removerSemana = async (index) => {
-    if (!window.confirm("Tem certeza que deseja remover este cardápio?")) return;
+    if (!window.confirm("Tem certeza que deseja remover esta ementa?")) return;
 
     try {
       const novasSemanas = menuData.semanas.filter((_, i) => i !== index);
       const docRef = doc(db, "artifacts/default-app-id/public/data/menus", "current");
       await setDoc(docRef, { semanas: novasSemanas });
-      setMensagem("✅ Cardápio removido com sucesso!");
+      setMensagem("✅ Ementa removida com sucesso!");
       setTimeout(() => setMensagem(""), 3000);
     } catch (error) {
-      console.error("Erro ao remover cardápio:", error);
-      setMensagem("❌ Erro ao remover cardápio");
+      console.error("Erro ao remover ementa:", error);
+      setMensagem("❌ Erro ao remover ementa");
       setTimeout(() => setMensagem(""), 5000);
     }
   };
@@ -211,10 +193,10 @@ function MenuAdmin() {
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-          🍽️ Gestão de Cardápios
+          🍽️ Gestão de Ementas
         </h2>
         <p className="text-gray-600">
-          Faça upload da imagem do cardápio semanal da Scolarest.
+          Faça upload da imagem da ementa semanal da Scolarest.
         </p>
       </div>
 
@@ -237,7 +219,7 @@ function MenuAdmin() {
       <form onSubmit={publicarCardapio} className="mb-8">
         <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
           <h3 className="text-xl font-bold text-gray-800 mb-4">
-            📤 Publicar Novo Cardápio
+            📤 Publicar Nova Ementa
           </h3>
 
           {/* Datas */}
@@ -273,7 +255,7 @@ function MenuAdmin() {
           {/* Upload de Imagem */}
           <div className="mb-4">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              🖼️ Imagem do Cardápio
+              🖼️ Imagem da Ementa
             </label>
             <input
               id="fileInput"
@@ -284,7 +266,7 @@ function MenuAdmin() {
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Formatos aceitos: JPG, PNG, GIF (máx. 5MB)
+              Formatos aceitos: JPG, PNG, GIF (máx. 1MB)
             </p>
           </div>
 
@@ -309,20 +291,20 @@ function MenuAdmin() {
             disabled={uploading}
             className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-bold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
           >
-            {uploading ? "📤 Publicando..." : "✅ Publicar Cardápio"}
+            {uploading ? "📤 Publicando..." : "✅ Publicar Ementa"}
           </button>
         </div>
       </form>
 
       <div>
         <h3 className="text-xl font-bold text-gray-800 mb-4">
-          📋 Cardápios Publicados ({menuData.semanas.length})
+          📋 Ementas Publicadas ({menuData.semanas.length})
         </h3>
 
         {menuData.semanas.length === 0 ? (
           <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-8 text-center">
             <p className="text-gray-500 text-lg">
-              📭 Nenhum cardápio publicado ainda.
+              📭 Nenhuma ementa publicada ainda.
             </p>
             <p className="text-gray-400 text-sm mt-2">
               Faça upload da primeira imagem acima.
@@ -357,10 +339,10 @@ function MenuAdmin() {
                 </div>
 
                 {/* Imagem do Cardápio */}
-                {semana.imagemUrl && (
+                {(semana.imagemBase64 || semana.imagemUrl) && (
                   <div className="border-2 border-gray-300 rounded-lg p-2 bg-white">
                     <img
-                      src={semana.imagemUrl}
+                      src={semana.imagemBase64 || semana.imagemUrl}
                       alt={`Cardápio ${semana.dataInicio} - ${semana.dataFim}`}
                       className="w-full h-auto rounded"
                     />
@@ -376,11 +358,11 @@ function MenuAdmin() {
       <div className="mt-8 bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
         <h4 className="font-bold text-gray-800 mb-2">💡 Dicas:</h4>
         <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
-          <li>Tire uma foto nítida do cardápio da Scolarest</li>
+          <li>Tire uma foto nítida da ementa da Scolarest</li>
           <li>Certifique-se de que o texto está legível</li>
-          <li>Publique o cardápio no início de cada semana</li>
-          <li>Os cardápios antigos ficam salvos no histórico</li>
-          <li>Alunos e professores verão automaticamente o cardápio da semana atual</li>
+          <li>Publique a ementa no início de cada semana</li>
+          <li>As ementas antigas ficam salvas no histórico</li>
+          <li>Alunos e professores verão automaticamente a ementa da semana atual</li>
         </ul>
       </div>
     </motion.div>

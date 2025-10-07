@@ -2,9 +2,6 @@ import React, { useRef } from "react";
 import { DAYS_OF_WEEK, TIME_SLOTS } from "../constants";
 import { downloadSchedulePDF } from "../utils/pdfExport";
 
-/**
- * Componente para exibir a grade de horários
- */
 const ScheduleGrid = ({ 
   schedule = { entries: [] }, 
   turma = "—", 

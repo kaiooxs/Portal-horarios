@@ -7,6 +7,7 @@ function MenuSemanal() {
   const [menuData, setMenuData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [semanaAtual, setSemanaAtual] = useState(null);
+  const [imagemZoom, setImagemZoom] = useState(null);
 
   useEffect(() => {
     const docRef = doc(db, "artifacts/default-app-id/public/data/menus", "current");
@@ -87,34 +88,49 @@ function MenuSemanal() {
       </div>
 
       {/* Imagem do Cardápio */}
-      {semanaAtual.imagemUrl ? (
+      {(semanaAtual.imagemBase64 || semanaAtual.imagemUrl) ? (
         <div className="mb-6">
-          <div className="border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+          <div 
+            className="border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-50 cursor-pointer hover:border-blue-400 transition-colors"
+            onClick={() => setImagemZoom(semanaAtual.imagemBase64 || semanaAtual.imagemUrl)}
+            title="Clique para ampliar"
+          >
             <img
-              src={semanaAtual.imagemUrl}
+              src={semanaAtual.imagemBase64 || semanaAtual.imagemUrl}
               alt={`Cardápio ${semanaAtual.dataInicio} - ${semanaAtual.dataFim}`}
               className="w-full h-auto"
               style={{ maxHeight: "80vh", objectFit: "contain" }}
             />
           </div>
+          <p className="text-center text-sm text-gray-500 mt-2">
+            💡 Clique na imagem para ampliar
+          </p>
           
           {/* Botões de ação */}
           <div className="flex flex-wrap gap-3 mt-4">
-            <a
-              href={semanaAtual.imagemUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm flex items-center gap-2"
-            >
-              🔍 Ver em Tamanho Real
-            </a>
-            <a
-              href={semanaAtual.imagemUrl}
-              download={`cardapio_${semanaAtual.dataInicio}.jpg`}
+            {semanaAtual.imagemUrl && (
+              <a
+                href={semanaAtual.imagemUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm flex items-center gap-2"
+              >
+                🔍 Ver em Tamanho Real
+              </a>
+            )}
+            <button
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = semanaAtual.imagemBase64 || semanaAtual.imagemUrl;
+                link.download = `cardapio_${semanaAtual.dataInicio.replace(/\s+/g, '_')}.jpg`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold text-sm flex items-center gap-2"
             >
               💾 Baixar Imagem
-            </a>
+            </button>
           </div>
         </div>
       ) : (
@@ -149,9 +165,9 @@ function MenuSemanal() {
                   📅 {semana.dataInicio} - {semana.dataFim}
                 </summary>
                 <div className="mt-3 border-t border-gray-200 pt-3">
-                  {semana.imagemUrl && (
+                  {(semana.imagemBase64 || semana.imagemUrl) && (
                     <img
-                      src={semana.imagemUrl}
+                      src={semana.imagemBase64 || semana.imagemUrl}
                       alt={`Cardápio ${semana.dataInicio} - ${semana.dataFim}`}
                       className="w-full h-auto rounded"
                     />
@@ -161,6 +177,36 @@ function MenuSemanal() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Modal de Zoom */}
+      {imagemZoom && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+          onClick={() => setImagemZoom(null)}
+        >
+          <div className="relative max-w-7xl max-h-full">
+            <button
+              onClick={() => setImagemZoom(null)}
+              className="absolute top-4 right-4 bg-white text-gray-800 rounded-full w-10 h-10 flex items-center justify-center hover:bg-gray-200 font-bold text-xl z-10"
+              title="Fechar"
+            >
+              ✕
+            </button>
+            <img
+              src={imagemZoom}
+              alt="Cardápio ampliado"
+              className="max-w-full max-h-screen object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="text-white text-center mt-4 text-sm">
+              Clique fora da imagem para fechar
+            </p>
+          </div>
+        </motion.div>
       )}
     </motion.div>
   );

@@ -338,7 +338,7 @@ function HorasRestantesAdmin() {
                 <h4 className="font-bold text-gray-700 mb-2">📖 Legenda de Cores:</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 font-bold">
+                    <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 font-bold">
                       &gt;20h
                     </span>
                     <span className="text-gray-600">Muitas horas</span>
@@ -350,13 +350,13 @@ function HorasRestantesAdmin() {
                     <span className="text-gray-600">Moderado</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-bold">
+                    <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 font-bold">
                       1-10h
                     </span>
                     <span className="text-gray-600">Poucas horas</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 font-bold">
+                    <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 font-bold">
                       0h
                     </span>
                     <span className="text-gray-600">Completo</span>

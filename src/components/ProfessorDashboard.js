@@ -255,7 +255,7 @@ function ProfessorDashboard({ professorNameFromLogin }) {
 
   return (
     <div className="space-y-6">
-      {/* 🔥 Botões de navegação */}
+      {/*Botões de navegação */}
       <div className="flex gap-3 flex-wrap">
         <button
           onClick={() => setMostrarMenu(false)}
@@ -531,7 +531,7 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                       {/* Legenda */}
                       <div className="mt-3 flex flex-wrap gap-2 text-xs">
                         <div className="flex items-center gap-1">
-                          <span className="w-3 h-3 rounded-full bg-green-100 border border-green-300"></span>
+                          <span className="w-3 h-3 rounded-full bg-red-100 border border-orange-300"></span>
                           <span className="text-gray-600">&gt;20h: Muitas horas</span>
                         </div>
                         <div className="flex items-center gap-1">
@@ -539,11 +539,11 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                           <span className="text-gray-600">10-20h: Moderado</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="w-3 h-3 rounded-full bg-orange-100 border border-orange-300"></span>
+                          <span className="w-3 h-3 rounded-full bg-orange-100 border border-green-300"></span>
                           <span className="text-gray-600">1-10h: Poucas horas</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="w-3 h-3 rounded-full bg-gray-100 border border-gray-300"></span>
+                          <span className="w-3 h-3 rounded-full bg-green-100 border border-green-300"></span>
                           <span className="text-gray-600">0h: Completo</span>
                         </div>
                       </div>

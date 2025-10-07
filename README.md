@@ -1,119 +1,47 @@
-# 📚 Portal de Horários EPALC - Sistema de Gestão Escolar
+# 📚 Portal de Horários EPALC
 
-Sistema completo para gestão de horários escolares e cardápios semanais com dashboards para administradores, professores e alunos.
-
-**🔥 Versão 1.2.0 - Sistema de Cardápio Semanal + Identidade Visual!**
+Sistema completo de gestão de horários escolares e cardápios semanais para a Escola Profissional de Agricultura de Lamego e Coimbra (EPALC).
 
 ---
 
-## ✨ **Novidades da Versão 1.2.0**
+## 🚀 **Funcionalidades Principais**
 
-### **🍽️ NOVO: Sistema de Cardápio Semanal**
-- ✅ **Upload simplificado** de imagens do cardápio
-- ✅ Visualização para alunos e professores
-- ✅ Gestão facilitada para administradores
-- ✅ Histórico de cardápios anteriores
-- ✅ Download e visualização em tamanho real
-- ✅ Integração com Firebase Storage
-
-### **🎨 NOVO: Identidade Visual Institucional**
-- ✅ **Logo oficial da EPALC** na página de login
-- ✅ **Logos das parcerias** no footer (Pessoas 2030, Portugal 2030, UE, República Portuguesa, INSTICOOP)
-- ✅ Visual profissional e institucional
-- ✅ Imagens otimizadas e nítidas
-
-### **⚡ Melhorias de Versões Anteriores**
-- ✅ Seleção múltipla de turmas (v1.1.0)
-- ✅ 100% Responsivo para mobile (v1.1.0)
-- ✅ Interface visual melhorada (v1.1.0)
-- ✅ Indicadores coloridos de horas (v1.1.0)
-
----
-
-## 🚀 **Funcionalidades**
-
-### **👨‍💼 Dashboard do Administrador**
-- ✅ Visualizar status de disponibilidades de todos os professores
-- ✅ Criar e editar horários de todas as turmas
+### **👨‍💼 Painel do Administrador**
+- ✅ Gestão completa de horários de todas as turmas
 - ✅ Publicar/despublicar horários
 - ✅ Exportar horários em PDF
-- ✅ Limpar horários de turmas
-- ✅ Alocar professores automaticamente baseado em disponibilidades
-- 🔥 **NOVO v1.2.0:** Gestão de cardápios semanais (upload de imagens)
-- ✅ Interface responsiva para mobile
+- ✅ Visualizar disponibilidades dos professores
+- ✅ **Gestão de cardápios semanais** (upload de imagens)
+- ✅ Histórico de cardápios anteriores
 
-### **👨‍🏫 Dashboard do Professor**
-- ✅ Visualizar disciplinas e horas restantes por turma
-- ✅ Selecionar múltiplas turmas para comparação
-- ✅ Indicadores coloridos de horas (verde/amarelo/vermelho)
+### **👨‍🏫 Painel do Professor**
+- ✅ Visualizar disciplinas e horas restantes
 - ✅ Marcar disponibilidades de horários
-- ✅ Scroll horizontal em mobile
 - ✅ Selecionar turmas que leciona
-- ✅ Definir disciplinas por turma
-- ✅ Visualizar horários de aula publicados
-- ✅ Marcar almoços agendados
-- 🔥 **NOVO v1.2.0:** Visualizar cardápio semanal
+- ✅ Visualizar horários publicados
+- ✅ Visualizar cardápio semanal
 
-### **👨‍🎓 Dashboard do Aluno**
+### **👨‍🎓 Painel do Aluno**
 - ✅ Visualizar horário da turma
 - ✅ Exportar horário em PDF
+- ✅ Visualizar cardápio semanal
+- ✅ Ampliar e baixar imagens do cardápio
 - ✅ Atualizações em tempo real
-- ✅ Interface responsiva para mobile
-- 🔥 **NOVO v1.2.0:** Visualizar cardápio semanal
 
 ---
 
-## 🏗️ **Arquitetura**
+## 🛠️ **Tecnologias Utilizadas**
 
 ### **Frontend**
 - **React** - Framework UI
-- **Tailwind CSS** - Estilização
-- **Framer Motion** - Animações
+- **Tailwind CSS** - Estilização moderna
+- **Framer Motion** - Animações suaves
 - **jsPDF + html2canvas** - Geração de PDF
 
 ### **Backend**
 - **Firebase Firestore** - Banco de dados NoSQL em tempo real
-- **Firebase Storage** - Armazenamento de imagens (cardápios)
 - **Firebase Auth** - Autenticação anônima
-
-### **Estrutura de Pastas**
-```
-src/
-├── components/          # Componentes React
-│   ├── AdminDashboard.js
-│   ├── ProfessorDashboard.js
-│   ├── AlunoDashboard.js
-│   ├── LoginScreen.js
-│   ├── ScheduleGrid.js
-│   ├── MenuAdmin.js         # 🆕 Gestão de cardápios
-│   ├── MenuSemanal.js       # 🆕 Visualização de cardápios
-│   └── MigrationButton.js
-│
-├── constants/           # Constantes da aplicação
-│   └── index.js
-│
-├── hooks/               # Hooks customizados
-│   └── useFirestore.js
-│
-├── services/            # Serviços (Firestore)
-│   └── firestoreService.js
-│
-├── utils/               # Utilitários
-│   ├── helpers.js
-│   └── pdfExport.js
-│
-├── scripts/             # Scripts de migração
-│   └── migrateDataToFirebase.js
-│
-├── App.js               # Componente principal
-├── firebaseConfig.js    # Configuração do Firebase (+ Storage)
-└── index.js             # Entry point
-
-public/
-└── imagens/             # 🆕 Recursos visuais
-    ├── logo-epalc.png       # Logo da escola
-    └── logo-parcerias.png   # Logos das parcerias
-```
+- **Base64** - Armazenamento de imagens de cardápios
 
 ---
 
@@ -133,12 +61,19 @@ npm install
 ### **3. Configurar Firebase**
 1. Crie um projeto no [Firebase Console](https://console.firebase.google.com/)
 2. Ative o **Firestore Database**
-3. Ative o **Firebase Storage** (para cardápios)
-4. Copie as credenciais para `src/firebaseConfig.js`
-5. Configure as regras de segurança do Storage (veja `FIREBASE_STORAGE_SETUP.md`)
+3. Copie as credenciais para um arquivo `.env` na raiz do projeto:
 
-### **4. Adicionar Dados Iniciais**
-Siga o guia em `FIREBASE_DATA_COMPLETE.md` para adicionar os dados iniciais no Firestore.
+```env
+REACT_APP_FIREBASE_API_KEY=sua_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=seu_auth_domain
+REACT_APP_FIREBASE_PROJECT_ID=seu_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=seu_storage_bucket
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=seu_sender_id
+REACT_APP_FIREBASE_APP_ID=seu_app_id
+```
+
+### **4. Configurar Regras do Firestore**
+Copie o conteúdo de `firestore.rules` para as regras do seu projeto Firebase.
 
 ### **5. Iniciar Aplicação**
 ```bash
@@ -159,58 +94,98 @@ A aplicação estará disponível em `http://localhost:3000`
 - Senha: `prof123`
 
 ### **Aluno**
-- Digite a turma (ex: PI01, IG01, CC03, etc.)
+- Digite a turma (ex: PI01, IG01, CC03)
 - Sem senha
 
 ---
 
-## 📊 **Estrutura de Dados no Firebase**
+## 📁 **Estrutura do Projeto**
 
-### **Coleções:**
-
-#### **1. professores/**
-Armazena informações dos professores e suas disciplinas.
-```javascript
-{
-  id: "joao-leite",
-  nome: "João Leite",
-  disciplinas: ["CloudOps", "Python"]
-}
+```
+portal-horarios/
+├── public/
+│   ├── imagens/              # Logos e imagens
+│   └── index.html
+│
+├── src/
+│   ├── components/           # Componentes React
+│   │   ├── AdminDashboard.js
+│   │   ├── ProfessorDashboard.js
+│   │   ├── AlunoDashboard.js
+│   │   ├── LoginScreen.js
+│   │   ├── ScheduleGrid.js
+│   │   ├── MenuAdmin.js      # Gestão de cardápios
+│   │   ├── MenuSemanal.js    # Visualização de cardápios
+│   │   └── HorasRestantesAdmin.js
+│   │
+│   ├── constants/            # Constantes (turmas, horários, etc.)
+│   │   └── index.js
+│   │
+│   ├── hooks/                # Hooks customizados
+│   │   └── useFirestore.js
+│   │
+│   ├── services/             # Serviços (Firestore)
+│   │   └── firestoreService.js
+│   │
+│   ├── utils/                # Utilitários
+│   │   ├── helpers.js
+│   │   ├── pdfExport.js
+│   │   └── userManager.js
+│   │
+│   ├── App.js                # Componente principal
+│   ├── firebaseConfig.js     # Configuração do Firebase
+│   ├── index.js              # Entry point
+│   └── index.css             # Estilos globais
+│
+├── .env                      # Variáveis de ambiente (não versionado)
+├── .gitignore
+├── firestore.rules           # Regras de segurança do Firestore
+├── package.json
+├── tailwind.config.js
+└── README.md
 ```
 
-#### **2. turmas/**
-Armazena informações das turmas.
-```javascript
-{
-  id: "PI01",
-  nome: "PI01",
-  curso: "Programação Informática",
-  anoLetivo: "2024/2025"
-}
-```
+---
 
-#### **3. disciplinas_turma_ano/**
-Mapeia disciplinas, professores e horas por turma.
+## 🎯 **Como Usar**
+
+### **Administrador**
+1. Faça login como administrador
+2. Acesse a aba **"Cardápio"** para gerenciar cardápios
+3. Faça upload de uma imagem (máximo 1MB)
+4. Defina o período (data início e fim)
+5. Clique em **"Publicar Cardápio"**
+
+### **Professor/Aluno**
+1. Faça login com suas credenciais
+2. Acesse a aba **"Cardápio"**
+3. Visualize o cardápio da semana atual
+4. Clique na imagem para ampliar
+5. Use o botão **"Baixar Imagem"** para salvar
+
+---
+
+## 📊 **Estrutura de Dados no Firestore**
+
+### **Coleção: `menus/current`**
 ```javascript
 {
-  id: "PI01",
-  turma: "PI01",
-  ano: "10º Ano",
-  disciplinas: [
+  semanas: [
     {
-      disciplina: "Algoritmos",
-      professor: "João Leite",
-      horas: 150
+      id: "1234567890",
+      dataInicio: "2024-01-15",
+      dataFim: "2024-01-19",
+      imagemBase64: "data:image/jpeg;base64,...",
+      publicadoEm: Timestamp,
+      publicadoPor: "admin"
     }
   ]
 }
 ```
 
-#### **4. schedules/**
-Armazena os horários das turmas.
+### **Coleção: `schedules/{turmaId}`**
 ```javascript
 {
-  id: "PI01",
   entries: [
     {
       id: "123",
@@ -225,11 +200,9 @@ Armazena os horários das turmas.
 }
 ```
 
-#### **5. availabilities/**
-Armazena as disponibilidades dos professores.
+### **Coleção: `availabilities/{professorId}`**
 ```javascript
 {
-  id: "joao_leite",
   nome: "João Leite",
   turmas: ["PI01", "PI02"],
   disciplinaByTurma: {
@@ -237,72 +210,28 @@ Armazena as disponibilidades dos professores.
     "PI02": "Python"
   },
   slots: [...],
-  almocosAgendados: ["2ª Feira"],
-  lastUpdated: Timestamp
+  almocosAgendados: ["2ª Feira"]
 }
 ```
 
 ---
 
-## 🛠️ **Scripts Disponíveis**
+## 🔧 **Scripts Disponíveis**
 
-### **Desenvolvimento**
 ```bash
 npm start          # Inicia servidor de desenvolvimento
-npm test           # Executa testes
 npm run build      # Cria build de produção
-```
-
-### **Migração de Dados**
-```bash
-# Usar o botão de migração no dashboard do admin
-# Ou executar o script manualmente
-```
-
----
-
-## 📖 **Documentação**
-
-### **Documentação Geral**
-- **`README.md`** - Este arquivo (visão geral)
-- **`ARCHITECTURE.md`** - Arquitetura do sistema
-- **`TROUBLESHOOTING.md`** - Guia de resolução de problemas
-
-### **Sistema de Cardápios (v1.2.0)** 🆕
-- **`CARDAPIO_UPLOAD_GUIA.md`** - Guia completo de uso do sistema de cardápios
-- **`FIREBASE_STORAGE_SETUP.md`** - Configuração do Firebase Storage
-- **`ALTERACOES_CARDAPIO_V2.md`** - Comparação entre versões
-- **`RESUMO_FINAL_ALTERACOES.md`** - Resumo executivo das alterações
-- **`TESTE_SISTEMA.md`** - Checklist de testes
-- **`APRESENTACAO_DIRECAO.md`** - Apresentação para gestão
-
-### **Migração e Dados**
-- **`FIREBASE_DATA_COMPLETE.md`** - Dados para Firebase
-- **`MANUAL_MIGRATION_GUIDE.md`** - Guia de migração manual
-- **`QUICK_START_MIGRATION.md`** - Guia rápido de migração
-- **`CLEANUP_INSTRUCTIONS.md`** - Instruções de limpeza
-
-### **Refatoração (Histórico)**
-- **`REFACTORING_GUIDE.md`** - Guia completo da refatoração
-- **`REFACTORING_COMPLETE.md`** - Resumo da refatoração
-
----
-
-## 🧪 **Testes**
-
-### **Executar Testes**
-```bash
-npm test
-```
-
-### **Cobertura de Testes**
-```bash
-npm test -- --coverage
+npm test           # Executa testes
 ```
 
 ---
 
 ## 🚀 **Deploy**
+
+### **Vercel (Recomendado)**
+1. Instale o Vercel CLI: `npm i -g vercel`
+2. Execute: `vercel --prod`
+3. Configure as variáveis de ambiente no painel da Vercel
 
 ### **Firebase Hosting**
 ```bash
@@ -311,112 +240,97 @@ firebase deploy
 ```
 
 ### **Netlify**
-```bash
-npm run build
-# Arraste a pasta build/ para Netlify
-```
-
-### **Vercel**
-```bash
-npm run build
-vercel --prod
-```
+1. Execute: `npm run build`
+2. Arraste a pasta `build/` para o Netlify
 
 ---
 
-## 🔧 **Configuração**
+## 📱 **Responsividade**
 
-### **Variáveis de Ambiente**
-Crie um arquivo `.env` na raiz do projeto:
-```env
-REACT_APP_FIREBASE_API_KEY=your_api_key
-REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
-REACT_APP_FIREBASE_PROJECT_ID=your_project_id
-REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-REACT_APP_FIREBASE_APP_ID=your_app_id
-```
+O sistema é 100% responsivo e funciona perfeitamente em:
+- 📱 Smartphones (iOS e Android)
+- 📱 Tablets
+- 💻 Desktops
+- 🖥️ Monitores grandes
 
 ---
 
-## 📈 **Roadmap**
+## 🐛 **Resolução de Problemas**
 
-### **Versão 2.0**
-- [ ] Autenticação com Firebase Auth (email/senha)
-- [ ] Perfis de usuário personalizados
-- [ ] Notificações por email
-- [ ] Histórico de horários
-- [ ] Relatórios e estatísticas
+### **Erro ao fazer login**
+- Verifique se o Firebase está configurado corretamente
+- Confirme que as regras do Firestore estão aplicadas
 
-### **Versão 3.0**
-- [ ] App mobile (React Native)
-- [ ] Integração com Google Calendar
-- [ ] Sistema de mensagens
-- [ ] Gestão de salas e equipamentos
-- [ ] API REST
+### **Imagens não aparecem**
+- Verifique se a imagem tem menos de 1MB
+- Confirme que o formato é JPG, PNG ou JPEG
+
+### **Horários não atualizam**
+- Verifique sua conexão com a internet
+- Recarregue a página (F5)
 
 ---
 
-## 🐛 **Problemas Conhecidos**
+## 📝 **Changelog**
 
-Consulte `TROUBLESHOOTING.md` para soluções de problemas comuns.
+### **v1.3.0** (Atual)
+- ✅ Migração de Firebase Storage para Base64
+- ✅ Correção do problema de redirecionamento automático
+- ✅ Limpeza completa de arquivos desnecessários
+- ✅ Modal de zoom para imagens de cardápio
+- ✅ Botão de download funcional para Base64
+
+### **v1.2.0**
+- ✅ Sistema de cardápio semanal
+- ✅ Upload de imagens
+- ✅ Identidade visual institucional
+
+### **v1.1.0**
+- ✅ Seleção múltipla de turmas
+- ✅ Interface 100% responsiva
+- ✅ Indicadores coloridos de horas
+
+### **v1.0.0**
+- ✅ Sistema básico de horários
+- ✅ Dashboards para admin, professor e aluno
+- ✅ Exportação em PDF
 
 ---
 
 ## 🤝 **Contribuindo**
 
 1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
+2. Crie uma branch: `git checkout -b feature/MinhaFeature`
+3. Commit suas mudanças: `git commit -m 'Adiciona MinhaFeature'`
+4. Push para a branch: `git push origin feature/MinhaFeature`
 5. Abra um Pull Request
 
 ---
 
-## 📝 **Licença**
+## 📄 **Licença**
 
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
-
----
-
-## 👥 **Autores**
-
-- **Desenvolvedor Principal** - [Seu Nome]
+Este projeto está sob a licença MIT.
 
 ---
 
-## 🙏 **Agradecimentos**
+## 👥 **Desenvolvido para**
 
-- Firebase pela infraestrutura
-- React pela framework
-- Tailwind CSS pela estilização
-- Framer Motion pelas animações
+**EPALC - Escola Profissional de Agricultura de Lamego e Coimbra**
+
+Em parceria com:
+- Pessoas 2030
+- Portugal 2030
+- União Europeia
+- República Portuguesa
+- INSTICOOP
 
 ---
 
 ## 📞 **Suporte**
 
-Para suporte, envie um email para [seu-email] ou abra uma issue no GitHub.
+Para suporte técnico, entre em contato com a equipe de TI da EPALC.
 
 ---
 
-## 📊 **Status do Projeto**
-
-![Status](https://img.shields.io/badge/status-active-success.svg)
-![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-
----
-
-## 🔗 **Links Úteis**
-
-- [Firebase Console](https://console.firebase.google.com/)
-- [React Documentation](https://reactjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Framer Motion](https://www.framer.com/motion/)
-
----
-
-**Desenvolvido com ❤️ em Portugal 🇵🇹**
-
-**Última atualização:** ${new Date().toLocaleDateString("pt-PT")}
+**Versão:** 1.3.0  
+**Última atualização:** Janeiro 2025

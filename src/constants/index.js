@@ -1,5 +1,3 @@
-// Constantes da aplicação
-
 export const DAYS_OF_WEEK = ["2ª Feira", "3ª Feira", "4ª Feira", "5ª Feira", "6ª Feira"];
 
 export const TIME_SLOTS = [
