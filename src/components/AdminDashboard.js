@@ -5,9 +5,6 @@ import { doc, setDoc, onSnapshot, collection, updateDoc } from "firebase/firesto
 import { DAYS_OF_WEEK, TIME_SLOTS, TURMAS, PROFESSORES_EXEMPLO } from "../constants";
 import { downloadSchedulePDF } from "../utils/pdfExport";
 import MenuAdmin from "./MenuAdmin";
-import SeedDisciplinasButton from "./SeedDisciplinasButton";
-import MigrateDisciplinasButton from "./MigrateDisciplinasButton";
-import FirebaseDiagnostico from "./FirebaseDiagnostico";
 
 function AdminDashboard() {
   const [schedules, setSchedules] = useState({});
@@ -165,20 +162,6 @@ function AdminDashboard() {
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 text-gray-800">
             👨‍💼 Admin — Gerir Horários
           </h2>
-
-      {/* Diagnóstico do Firebase */}
-      <div className="mb-6">
-        <FirebaseDiagnostico />
-      </div>
-
-      {/* Botões para gerenciar disciplinas */}
-      <div className="mb-6 space-y-4">
-        <MigrateDisciplinasButton />
-        <div className="text-center text-sm text-gray-500">
-          <p>ou</p>
-        </div>
-        <SeedDisciplinasButton />
-      </div>
 
       {/*Status de Disponibilidades - RESPONSIVO */}
       <div className="mb-6">
