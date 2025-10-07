@@ -17,19 +17,47 @@ function MenuAdmin() {
 
   // Carregar dados do Firebase
   useEffect(() => {
+    console.log("[MenuAdmin] Configurando listener do Firebase...");
     const docRef = doc(db, "artifacts/default-app-id/public/data/menus", "current");
     
-    const unsub = onSnapshot(docRef, (snap) => {
-      if (snap.exists()) {
-        setMenuData(snap.data());
-      } else {
-        setMenuData({ semanas: [] });
+    const unsub = onSnapshot(
+      docRef, 
+      (snap) => {
+        console.log("[MenuAdmin] 📡 onSnapshot disparado");
+        console.log("[MenuAdmin] - Documento existe?", snap.exists());
+        console.log("[MenuAdmin] - Estado uploading:", uploading);
+        
+        // Não atualizar o estado se estiver fazendo upload (evita loop)
+        if (uploading) {
+          console.log("[MenuAdmin] ⏸️ Ignorando atualização durante upload");
+          return;
+        }
+        
+        if (snap.exists()) {
+          const data = snap.data();
+          console.log("[MenuAdmin] ✅ Dados recebidos do Firestore:");
+          console.log("[MenuAdmin] - Número de semanas:", data.semanas?.length || 0);
+          console.log("[MenuAdmin] - Dados completos:", JSON.stringify(data, null, 2));
+          setMenuData(data);
+        } else {
+          console.log("[MenuAdmin] ⚠️ Documento não existe no Firestore, inicializando vazio");
+          setMenuData({ semanas: [] });
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error("[MenuAdmin] ❌ Erro no onSnapshot:", error);
+        console.error("[MenuAdmin] Código do erro:", error.code);
+        console.error("[MenuAdmin] Mensagem:", error.message);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
-    return () => unsub();
-  }, []);
+    return () => {
+      console.log("[MenuAdmin] 🧹 Limpando listener");
+      unsub();
+    };
+  }, [uploading]); // Adicionar uploading como dependência
 
   // Lidar com seleção de arquivo
   const handleFileSelect = (e) => {
@@ -70,24 +98,37 @@ function MenuAdmin() {
       return;
     }
 
+    console.log("[MenuAdmin] 🚀 Iniciando publicação do cardápio...");
+    console.log("[MenuAdmin] - Data Início:", dataInicio);
+    console.log("[MenuAdmin] - Data Fim:", dataFim);
+    console.log("[MenuAdmin] - Preview existe?", !!imagemPreview);
+    
     setUploading(true);
     setMensagem("");
 
     try {
       // Converter base64 para blob
+      console.log("[MenuAdmin] 📦 Convertendo imagem para blob...");
       const response = await fetch(imagemPreview);
       const blob = await response.blob();
+      console.log("[MenuAdmin] - Blob criado, tamanho:", blob.size, "bytes");
 
       // Criar nome único para o arquivo
       const timestamp = Date.now();
       const fileName = `cardapio_${timestamp}.jpg`;
       const storageRef = ref(storage, `cardapios/${fileName}`);
+      console.log("[MenuAdmin] - Nome do arquivo:", fileName);
+      console.log("[MenuAdmin] - Caminho no Storage:", `cardapios/${fileName}`);
 
       // Upload para Firebase Storage
-      await uploadBytes(storageRef, blob);
+      console.log("[MenuAdmin] ☁️ Fazendo upload para Firebase Storage...");
+      const uploadResult = await uploadBytes(storageRef, blob);
+      console.log("[MenuAdmin] - Upload concluído!", uploadResult.metadata.fullPath);
       
       // Obter URL da imagem
+      console.log("[MenuAdmin] 🔗 Obtendo URL da imagem...");
       const imageUrl = await getDownloadURL(storageRef);
+      console.log("[MenuAdmin] - URL obtida:", imageUrl);
 
       // Criar nova semana com a imagem
       const novaSemana = {
@@ -98,28 +139,46 @@ function MenuAdmin() {
       };
 
       // Adicionar à lista de semanas (mantém as anteriores)
-      const novasSemanas = [novaSemana, ...menuData.semanas];
+      // Usar o estado atual de menuData
+      const semanasAtuais = Array.isArray(menuData.semanas) ? [...menuData.semanas] : [];
+      const novasSemanas = [novaSemana, ...semanasAtuais];
 
-      // Salvar no Firestore
+      console.log("[MenuAdmin] 💾 Salvando no Firestore...");
+      console.log("[MenuAdmin] Total de semanas:", novasSemanas.length);
+      console.log("[MenuAdmin] Dados a salvar:", JSON.stringify({ semanas: novasSemanas }, null, 2));
+      
+      // Salvar no Firestore PRIMEIRO (sem merge para garantir que sobrescreve)
       const docRef = doc(db, "artifacts/default-app-id/public/data/menus", "current");
-      await setDoc(docRef, { semanas: novasSemanas });
+      await setDoc(docRef, { semanas: novasSemanas }, { merge: false });
+      
+      console.log("[MenuAdmin] ✅ Documento salvo no Firestore!");
+      
+      // Atualizar o estado local DEPOIS para forçar re-render
+      setMenuData({ semanas: novasSemanas });
 
+      console.log("[MenuAdmin] ✅ Cardápio publicado com sucesso!");
       setMensagem("✅ Cardápio publicado com sucesso!");
       
       // Limpar formulário
       setImagemPreview(null);
       setDataInicio("");
       setDataFim("");
-      document.getElementById("fileInput").value = "";
+      const fileInput = document.getElementById("fileInput");
+      if (fileInput) {
+        fileInput.value = "";
+      }
 
+      // Limpar mensagem após 3 segundos
       setTimeout(() => setMensagem(""), 3000);
     } catch (error) {
-      console.error("Erro ao publicar cardápio:", error);
+      console.error("[MenuAdmin] ❌ Erro ao publicar cardápio:", error);
+      console.error("[MenuAdmin] Stack trace:", error.stack);
       setMensagem("❌ Erro ao publicar cardápio: " + error.message);
       setTimeout(() => setMensagem(""), 5000);
+    } finally {
+      console.log("[MenuAdmin] 🏁 Finalizando upload...");
+      setUploading(false);
     }
-
-    setUploading(false);
   };
 
   // Remover semana

@@ -34,3 +34,42 @@ export const compararNomes = (nome1, nome2) => {
 export const gerarDocId = (nome) => {
   return nome.toLowerCase().replace(/\s+/g, "_");
 };
+
+/**
+ * Calcula o intervalo da semana atual (Segunda a Sexta)
+ * @returns {string} Intervalo formatado como "DD/MM - DD/MM"
+ */
+export const getIntervaloSemanaAtual = () => {
+  const hoje = new Date();
+  const diaSemana = hoje.getDay(); // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
+  
+  // Calcular a segunda-feira da semana atual
+  const diasAteSegunda = diaSemana === 0 ? -6 : 1 - diaSemana;
+  const segunda = new Date(hoje);
+  segunda.setDate(hoje.getDate() + diasAteSegunda);
+  
+  // Calcular a sexta-feira da semana atual
+  const sexta = new Date(segunda);
+  sexta.setDate(segunda.getDate() + 4);
+  
+  // Formatar datas
+  const formatarData = (data) => {
+    const dia = String(data.getDate()).padStart(2, '0');
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    return `${dia}/${mes}`;
+  };
+  
+  return `${formatarData(segunda)} - ${formatarData(sexta)}`;
+};
+
+/**
+ * Retorna o nome do mês atual em português
+ * @returns {string} Nome do mês
+ */
+export const getMesAtual = () => {
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  return meses[new Date().getMonth()];
+};

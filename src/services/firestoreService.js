@@ -267,3 +267,136 @@ export const cleanUpSchedulesAfterUpdate = async (professorNome, newAvailableSlo
     console.error("cleanUpSchedulesAfterUpdate erro:", err);
   }
 };
+
+// ==================== HORAS RESTANTES ====================
+
+/**
+ * Calcula as horas restantes de cada disciplina para cada professor
+ * baseado nas aulas já atribuídas nos horários
+ */
+export const calcularHorasRestantes = async () => {
+  try {
+    console.log("[FirestoreService] 🔄 Calculando horas restantes...");
+    
+    // 1. Buscar dados iniciais das disciplinas por turma
+    const disciplinasSnapshot = await getDocs(collection(db, FIRESTORE_PATHS.DISCIPLINAS_TURMA_ANO));
+    const disciplinasIniciais = {};
+    
+    disciplinasSnapshot.docs.forEach(doc => {
+      disciplinasIniciais[doc.id] = doc.data();
+    });
+
+    // 2. Buscar todos os horários publicados
+    const schedulesSnapshot = await getDocs(collection(db, FIRESTORE_PATHS.SCHEDULES));
+    
+    // 3. Contar horas atribuídas por professor/disciplina/turma
+    const horasAtribuidas = {}; // { "Professor-Disciplina-Turma": horasCount }
+    
+    schedulesSnapshot.docs.forEach(scheduleDoc => {
+      const turma = scheduleDoc.id;
+      const scheduleData = scheduleDoc.data();
+      const entries = scheduleData.entries || [];
+      
+      entries.forEach(entry => {
+        if (entry.professor && entry.disciplina) {
+          const key = `${entry.professor}|||${entry.disciplina}|||${turma}`;
+          horasAtribuidas[key] = (horasAtribuidas[key] || 0) + 1;
+        }
+      });
+    });
+
+    console.log("[FirestoreService] 📊 Horas atribuídas:", horasAtribuidas);
+
+    // 4. Atualizar horas restantes no Firebase
+    const batch = writeBatch(db);
+    
+    Object.keys(disciplinasIniciais).forEach(turmaId => {
+      const turmaData = disciplinasIniciais[turmaId];
+      const disciplinasAtualizadas = (turmaData.disciplinas || []).map(disc => {
+        const key = `${disc.professor}|||${disc.disciplina}|||${turmaId}`;
+        const horasUsadas = horasAtribuidas[key] || 0;
+        const horasRestantes = Math.max(0, (disc.horas || 0) - horasUsadas);
+        
+        return {
+          ...disc,
+          horasRestantes: horasRestantes,
+          horasAtribuidas: horasUsadas
+        };
+      });
+      
+      const docRef = doc(db, FIRESTORE_PATHS.DISCIPLINAS_TURMA_ANO, turmaId);
+      batch.update(docRef, { 
+        disciplinas: disciplinasAtualizadas,
+        lastCalculated: serverTimestamp()
+      });
+    });
+
+    await batch.commit();
+    console.log("[FirestoreService] ✅ Horas restantes atualizadas com sucesso!");
+    
+    return { success: true };
+  } catch (error) {
+    console.error("[FirestoreService] ❌ Erro ao calcular horas restantes:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Atualiza as horas restantes de uma turma específica
+ */
+export const atualizarHorasRestantesTurma = async (turmaId) => {
+  try {
+    console.log(`[FirestoreService] 🔄 Atualizando horas restantes da turma ${turmaId}...`);
+    
+    // 1. Buscar dados iniciais da turma
+    const turmaDocRef = doc(db, FIRESTORE_PATHS.DISCIPLINAS_TURMA_ANO, turmaId);
+    const turmaDoc = await getDoc(turmaDocRef);
+    
+    if (!turmaDoc.exists()) {
+      console.warn(`[FirestoreService] ⚠️ Turma ${turmaId} não encontrada`);
+      return { success: false, error: "Turma não encontrada" };
+    }
+    
+    const turmaData = turmaDoc.data();
+    
+    // 2. Buscar horário da turma
+    const scheduleDocRef = doc(db, FIRESTORE_PATHS.SCHEDULES, turmaId);
+    const scheduleDoc = await getDoc(scheduleDocRef);
+    
+    const entries = scheduleDoc.exists() ? (scheduleDoc.data().entries || []) : [];
+    
+    // 3. Contar horas atribuídas por professor/disciplina
+    const horasAtribuidas = {}; // { "Professor-Disciplina": horasCount }
+    
+    entries.forEach(entry => {
+      if (entry.professor && entry.disciplina) {
+        const key = `${entry.professor}|||${entry.disciplina}`;
+        horasAtribuidas[key] = (horasAtribuidas[key] || 0) + 1;
+      }
+    });
+    
+    // 4. Atualizar horas restantes
+    const disciplinasAtualizadas = (turmaData.disciplinas || []).map(disc => {
+      const key = `${disc.professor}|||${disc.disciplina}`;
+      const horasUsadas = horasAtribuidas[key] || 0;
+      const horasRestantes = Math.max(0, (disc.horas || 0) - horasUsadas);
+      
+      return {
+        ...disc,
+        horasRestantes: horasRestantes,
+        horasAtribuidas: horasUsadas
+      };
+    });
+    
+    await updateDoc(turmaDocRef, { 
+      disciplinas: disciplinasAtualizadas,
+      lastCalculated: serverTimestamp()
+    });
+    
+    console.log(`[FirestoreService] ✅ Horas restantes da turma ${turmaId} atualizadas!`);
+    return { success: true };
+  } catch (error) {
+    console.error(`[FirestoreService] ❌ Erro ao atualizar horas da turma ${turmaId}:`, error);
+    return { success: false, error: error.message };
+  }
+};

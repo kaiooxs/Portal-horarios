@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { db } from '../firebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
-import DISCIPLINAS_TURMA_ANO from '../Disciplinas_Turma_Ano';
+import DISCIPLINAS_TURMA_ANO from '../Disciplinas_Turma_Ano.js';
 
 /**
  * Componente para popular o Firebase com dados de disciplinas
@@ -17,15 +17,43 @@ function SeedDisciplinasButton() {
     setResultado(null);
     setMostrarConfirmacao(false);
 
+    // Debug: Verificar se os dados foram importados corretamente
+    console.log('[SeedDisciplinasButton] DISCIPLINAS_TURMA_ANO:', DISCIPLINAS_TURMA_ANO);
+    console.log('[SeedDisciplinasButton] Tipo:', typeof DISCIPLINAS_TURMA_ANO);
+    console.log('[SeedDisciplinasButton] Keys:', Object.keys(DISCIPLINAS_TURMA_ANO || {}));
+
+    if (!DISCIPLINAS_TURMA_ANO || typeof DISCIPLINAS_TURMA_ANO !== 'object') {
+      setResultado({
+        total: 0,
+        sucessos: 0,
+        erros: 1,
+        detalhes: [{
+          turma: 'N/A',
+          status: 'erro',
+          mensagem: 'Erro ao importar DISCIPLINAS_TURMA_ANO. Verifique o arquivo de dados.',
+        }],
+      });
+      setLoading(false);
+      return;
+    }
+
     const COLLECTION_PATH = 'artifacts/default-app-id/public/data/disciplinas_turma_ano';
     const turmas = Object.keys(DISCIPLINAS_TURMA_ANO);
     let sucessos = 0;
     let erros = 0;
     const detalhes = [];
 
+    console.log(`[SeedDisciplinasButton] Iniciando seed de ${turmas.length} turmas:`, turmas);
+
     for (const turma of turmas) {
       try {
         const dados = DISCIPLINAS_TURMA_ANO[turma];
+        
+        // Validar dados antes de enviar
+        if (!dados || !dados.ano || !dados.disciplinas) {
+          throw new Error(`Dados inválidos para turma ${turma}`);
+        }
+
         const docRef = doc(db, COLLECTION_PATH, turma);
         
         await setDoc(docRef, {
@@ -34,6 +62,8 @@ function SeedDisciplinasButton() {
           lastUpdated: new Date().toISOString(),
         });
         
+        console.log(`[SeedDisciplinasButton] ✅ Turma ${turma} adicionada com sucesso`);
+        
         detalhes.push({
           turma,
           status: 'sucesso',
@@ -41,6 +71,7 @@ function SeedDisciplinasButton() {
         });
         sucessos++;
       } catch (error) {
+        console.error(`[SeedDisciplinasButton] ❌ Erro na turma ${turma}:`, error);
         detalhes.push({
           turma,
           status: 'erro',

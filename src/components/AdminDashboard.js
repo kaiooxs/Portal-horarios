@@ -4,13 +4,17 @@ import { db } from "../firebaseConfig";
 import { doc, setDoc, onSnapshot, collection, updateDoc } from "firebase/firestore";
 import { DAYS_OF_WEEK, TIME_SLOTS, TURMAS, PROFESSORES_EXEMPLO } from "../constants";
 import { downloadSchedulePDF } from "../utils/pdfExport";
+import { atualizarHorasRestantesTurma } from "../services/firestoreService";
 import MenuAdmin from "./MenuAdmin";
+import HorasRestantesAdmin from "./HorasRestantesAdmin";
+import DiagnosticoFirebase from "./DiagnosticoFirebase";
+import DiagnosticoPermissoes from "./DiagnosticoPermissoes";
 
 function AdminDashboard() {
   const [schedules, setSchedules] = useState({});
   const [availabilities, setAvailabilities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [abaAtiva, setAbaAtiva] = useState("horarios"); // "horarios" ou "cardapio"
+  const [abaAtiva, setAbaAtiva] = useState("horarios"); // "horarios", "cardapio", "horas", "diagnostico" ou "permissoes"
 
   useEffect(() => {
     let unsubscribers = [];
@@ -93,11 +97,17 @@ function AdminDashboard() {
         ];
       }
     }
+    
+    // Salvar horário atualizado
     await setDoc(
       doc(db, `artifacts/default-app-id/public/data/schedules`, turma),
       { entries: updated, published: schedules[turma]?.published || false },
       { merge: true }
     );
+    
+    // Atualizar horas restantes da turma
+    console.log(`[AdminDashboard] Atualizando horas restantes da turma ${turma}...`);
+    await atualizarHorasRestantesTurma(turma);
   };
 
   const togglePublish = async (turma) => {
@@ -107,10 +117,16 @@ function AdminDashboard() {
 
   const clearSchedule = async (turma) => {
     if (!window.confirm(`Tem certeza que deseja limpar completamente o horário da turma ${turma}?`)) return;
+    
+    // Limpar horário
     await setDoc(doc(db, `artifacts/default-app-id/public/data/schedules`, turma), {
       entries: [],
       published: false,
     });
+    
+    // Atualizar horas restantes (resetar para valores originais)
+    console.log(`[AdminDashboard] Resetando horas restantes da turma ${turma}...`);
+    await atualizarHorasRestantesTurma(turma);
   };
 
   if (loading) {
@@ -143,6 +159,16 @@ function AdminDashboard() {
           📅 Gerir Horários
         </button>
         <button
+          onClick={() => setAbaAtiva("horas")}
+          className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+            abaAtiva === "horas"
+              ? "bg-purple-600 text-white shadow-lg"
+              : "bg-white text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          ⏱️ Verificar Horas
+        </button>
+        <button
           onClick={() => setAbaAtiva("cardapio")}
           className={`px-6 py-3 rounded-xl font-semibold transition-all ${
             abaAtiva === "cardapio"
@@ -152,11 +178,37 @@ function AdminDashboard() {
         >
           🍽️ Gerir Cardápio
         </button>
+        <button
+          onClick={() => setAbaAtiva("diagnostico")}
+          className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+            abaAtiva === "diagnostico"
+              ? "bg-red-600 text-white shadow-lg"
+              : "bg-white text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          🔍 Diagnóstico Firebase
+        </button>
+        <button
+          onClick={() => setAbaAtiva("permissoes")}
+          className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+            abaAtiva === "permissoes"
+              ? "bg-purple-600 text-white shadow-lg"
+              : "bg-white text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          🔐 Permissões RBAC
+        </button>
       </div>
 
       {/*Conteúdo condicional */}
       {abaAtiva === "cardapio" ? (
         <MenuAdmin />
+      ) : abaAtiva === "horas" ? (
+        <HorasRestantesAdmin />
+      ) : abaAtiva === "diagnostico" ? (
+        <DiagnosticoFirebase />
+      ) : abaAtiva === "permissoes" ? (
+        <DiagnosticoPermissoes />
       ) : (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 text-gray-800">

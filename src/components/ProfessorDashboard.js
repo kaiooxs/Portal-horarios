@@ -7,6 +7,7 @@ import { normalizarNome } from "../utils/helpers";
 import ScheduleGrid from "./ScheduleGrid";
 import MenuSemanal from "./MenuSemanal";
 import { useDisciplinasTurmaAno } from "../hooks/useFirestore";
+import { calcularHorasRestantes } from "../services/firestoreService";
 
 function ProfessorDashboard({ professorNameFromLogin }) {
   const [nome, setNome] = useState(professorNameFromLogin || "");
@@ -19,6 +20,7 @@ function ProfessorDashboard({ professorNameFromLogin }) {
   const [salvamentoManual, setSalvamentoManual] = useState(false);
   const [turmaSelecionada, setTurmaSelecionada] = useState([]);
   const [mostrarMenu, setMostrarMenu] = useState(false);
+  const [recalculando, setRecalculando] = useState(false);
 
   //Buscar dados do Firebase
   const { disciplinasTurmaAno, loading: loadingDisciplinas } = useDisciplinasTurmaAno();
@@ -299,9 +301,77 @@ function ProfessorDashboard({ professorNameFromLogin }) {
 
       {/*NOVA SEÇÃO: Seleção Múltipla de Turmas para Comparação */}
       <div className="mb-6 bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
-        <h3 className="font-bold mb-3 text-lg flex items-center gap-2">
-          📊 Comparar Disciplinas e Horas entre Turmas
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-3">
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            📊 Comparar Disciplinas e Horas entre Turmas
+          </h3>
+          
+          {/* Botão de Recalcular Horas */}
+          <button
+            onClick={async () => {
+              if (!window.confirm("Recalcular as horas restantes de todas as turmas?\n\nIsso irá atualizar os contadores baseado nos horários já atribuídos.")) {
+                return;
+              }
+              
+              setRecalculando(true);
+              console.log("[ProfessorDashboard] Iniciando recálculo de horas...");
+              
+              try {
+                const result = await calcularHorasRestantes();
+                
+                if (result.success) {
+                  alert("✅ Horas restantes recalculadas com sucesso!");
+                } else {
+                  alert("❌ Erro ao recalcular horas: " + result.error);
+                }
+              } catch (error) {
+                console.error("[ProfessorDashboard] Erro:", error);
+                alert("❌ Erro ao recalcular horas: " + error.message);
+              } finally {
+                setRecalculando(false);
+              }
+            }}
+            disabled={recalculando}
+            className={`px-4 py-2 rounded-lg font-bold text-white shadow-lg transition-all text-sm ${
+              recalculando 
+                ? "bg-gray-400 cursor-not-allowed" 
+                : "bg-green-600 hover:bg-green-700 hover:shadow-xl"
+            }`}
+          >
+            {recalculando ? "⏳ Recalculando..." : "🔄 Recalcular Horas"}
+          </button>
+        </div>
+        
+        {/* Debug Info - Remover após resolver o problema */}
+        {!loadingDisciplinas && Object.keys(disciplinasTurmaAno).length > 0 && (
+          <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs">
+            <details>
+              <summary className="cursor-pointer font-semibold text-yellow-800">
+                🔍 Debug: Informações de Carregamento
+              </summary>
+              <div className="mt-2 space-y-1 text-yellow-700">
+                <p><strong>Professor logado:</strong> {nome}</p>
+                <p><strong>Nome normalizado:</strong> {normalizarNome(nome)}</p>
+                <p><strong>Total de turmas carregadas:</strong> {Object.keys(disciplinasTurmaAno).length}</p>
+                <p><strong>Turmas disponíveis:</strong> {Object.keys(disciplinasTurmaAno).join(", ")}</p>
+                {turmaSelecionada.length > 0 && turmaSelecionada[0] && disciplinasTurmaAno[turmaSelecionada[0]] && (
+                  <>
+                    <p className="mt-2"><strong>Exemplo - Turma {turmaSelecionada[0]}:</strong></p>
+                    <p><strong>Professores nesta turma:</strong></p>
+                    <ul className="pl-4 list-disc">
+                      {(disciplinasTurmaAno[turmaSelecionada[0]].disciplinas || []).map((d, i) => (
+                        <li key={i}>
+                          {d.professor} (normalizado: {normalizarNome(d.professor)})
+                          {normalizarNome(d.professor) === normalizarNome(nome) && " ✅ MATCH!"}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            </details>
+          </div>
+        )}
         
         {/* Seleção de múltiplas turmas */}
         <div className="mb-3">
@@ -311,6 +381,7 @@ function ProfessorDashboard({ professorNameFromLogin }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
             {turmasDoProfessor.map((t) => {
               const isSelected = turmaSelecionada.includes(t);
+              const temDados = disciplinasTurmaAno[t] !== undefined;
               return (
                 <button
                   key={t}
@@ -321,13 +392,15 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                       setTurmaSelecionada([...turmaSelecionada, t]);
                     }
                   }}
-                  className={`px-3 py-2 rounded-lg font-semibold transition-all ${
+                  className={`px-3 py-2 rounded-lg font-semibold transition-all relative ${
                     isSelected
                       ? "bg-blue-600 text-white shadow-lg scale-105"
                       : "bg-white text-gray-700 border-2 border-gray-300 hover:border-blue-400"
                   }`}
+                  title={temDados ? `Turma ${t} - Dados disponíveis` : `Turma ${t} - Sem dados no Firebase`}
                 >
                   {t}
+                  {!temDados && <span className="absolute -top-1 -right-1 text-red-500 text-xs">⚠️</span>}
                 </button>
               );
             })}
@@ -446,25 +519,38 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                         <thead className="bg-gradient-to-r from-blue-100 to-blue-50">
                           <tr>
                             <th className="px-3 py-2 border text-left">Disciplina</th>
-                            <th className="px-3 py-2 border text-center w-32">Horas Restantes</th>
+                            <th className="px-3 py-2 border text-center w-24">Total</th>
+                            <th className="px-3 py-2 border text-center w-24">Atribuídas</th>
+                            <th className="px-3 py-2 border text-center w-24">Restantes</th>
                           </tr>
                         </thead>
                         <tbody>
                           {disciplinasDaTurmaAtual.map((d, idx) => {
                             // Tentar múltiplos campos possíveis para horas
-                            const horasRestantes = d.horasRestantes ?? d.horas ?? d.horasSemanais ?? d.cargaHoraria ?? 0;
+                            const horasTotal = d.horas ?? d.horasSemanais ?? d.cargaHoraria ?? 0;
+                            const horasAtribuidas = d.horasAtribuidas ?? 0;
+                            const horasRestantes = d.horasRestantes ?? (horasTotal - horasAtribuidas);
                             
                             return (
                               <tr key={idx} className="hover:bg-blue-50 transition-colors">
-                                <td className="border px-3 py-2">{d.disciplina}</td>
+                                <td className="border px-3 py-2 font-medium">{d.disciplina}</td>
+                                <td className="border px-3 py-2 text-center text-gray-600">
+                                  {horasTotal}h
+                                </td>
+                                <td className="border px-3 py-2 text-center">
+                                  <span className="text-blue-600 font-semibold">
+                                    {horasAtribuidas}h
+                                  </span>
+                                </td>
                                 <td className="border px-3 py-2 text-center font-bold">
                                   <span className={`inline-block px-3 py-1 rounded-full ${
                                     horasRestantes > 20 ? "bg-green-100 text-green-700" :
                                     horasRestantes > 10 ? "bg-yellow-100 text-yellow-700" :
-                                    horasRestantes > 0 ? "bg-red-100 text-red-700" :
-                                    "bg-gray-100 text-gray-700"
+                                    horasRestantes > 0 ? "bg-orange-100 text-orange-700" :
+                                    horasRestantes === 0 ? "bg-gray-100 text-gray-700" :
+                                    "bg-red-100 text-red-700"
                                   }`}>
-                                    {horasRestantes > 0 ? `${horasRestantes}h` : "Sem dados"}
+                                    {horasRestantes >= 0 ? `${horasRestantes}h` : `${horasRestantes}h ⚠️`}
                                   </span>
                                 </td>
                               </tr>
@@ -472,6 +558,26 @@ function ProfessorDashboard({ professorNameFromLogin }) {
                           })}
                         </tbody>
                       </table>
+                      
+                      {/* Legenda */}
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                        <div className="flex items-center gap-1">
+                          <span className="w-3 h-3 rounded-full bg-green-100 border border-green-300"></span>
+                          <span className="text-gray-600">&gt;20h: Muitas horas</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-3 h-3 rounded-full bg-yellow-100 border border-yellow-300"></span>
+                          <span className="text-gray-600">10-20h: Moderado</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-3 h-3 rounded-full bg-orange-100 border border-orange-300"></span>
+                          <span className="text-gray-600">1-10h: Poucas horas</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-3 h-3 rounded-full bg-gray-100 border border-gray-300"></span>
+                          <span className="text-gray-600">0h: Completo</span>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-gray-500 text-center py-4 bg-gray-50 rounded-lg">
