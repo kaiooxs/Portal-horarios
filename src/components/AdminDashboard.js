@@ -7,14 +7,12 @@ import { downloadSchedulePDF } from "../utils/pdfExport";
 import { atualizarHorasRestantesTurma } from "../services/firestoreService";
 import MenuAdmin from "./MenuAdmin";
 import HorasRestantesAdmin from "./HorasRestantesAdmin";
-import DiagnosticoFirebase from "./DiagnosticoFirebase";
-import DiagnosticoPermissoes from "./DiagnosticoPermissoes";
 
 function AdminDashboard() {
   const [schedules, setSchedules] = useState({});
   const [availabilities, setAvailabilities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [abaAtiva, setAbaAtiva] = useState("horarios"); // "horarios", "cardapio", "horas", "diagnostico" ou "permissoes"
+  const [abaAtiva, setAbaAtiva] = useState("horarios"); // "horarios", "cardapio", "horas"
 
   useEffect(() => {
     let unsubscribers = [];
@@ -178,26 +176,6 @@ function AdminDashboard() {
         >
           🍽️ Gerir Cardápio
         </button>
-        <button
-          onClick={() => setAbaAtiva("diagnostico")}
-          className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-            abaAtiva === "diagnostico"
-              ? "bg-red-600 text-white shadow-lg"
-              : "bg-white text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          🔍 Diagnóstico Firebase
-        </button>
-        <button
-          onClick={() => setAbaAtiva("permissoes")}
-          className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-            abaAtiva === "permissoes"
-              ? "bg-purple-600 text-white shadow-lg"
-              : "bg-white text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          🔐 Permissões RBAC
-        </button>
       </div>
 
       {/*Conteúdo condicional */}
@@ -205,10 +183,6 @@ function AdminDashboard() {
         <MenuAdmin />
       ) : abaAtiva === "horas" ? (
         <HorasRestantesAdmin />
-      ) : abaAtiva === "diagnostico" ? (
-        <DiagnosticoFirebase />
-      ) : abaAtiva === "permissoes" ? (
-        <DiagnosticoPermissoes />
       ) : (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 text-gray-800">
