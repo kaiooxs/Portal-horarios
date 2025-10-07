@@ -164,9 +164,9 @@ function AdminDashboard() {
           ⏱️ Verificar Horas
         </button>
         <button
-          onClick={() => setAbaAtiva("Ementa")}
+          onClick={() => setAbaAtiva("ementa")}
           className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-            abaAtiva === "Ementa"
+            abaAtiva === "ementa"
               ? "bg-orange-500 text-white shadow-lg"
               : "bg-white text-gray-700 hover:bg-gray-50"
           }`}
