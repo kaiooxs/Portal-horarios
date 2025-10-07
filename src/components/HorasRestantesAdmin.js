@@ -350,7 +350,7 @@ function HorasRestantesAdmin() {
                     <span className="text-gray-600">Moderado</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 font-bold">
+                    <span className="px-3 py-1 rounded-full bg-orange-100 text-green-700 font-bold">
                       1-10h
                     </span>
                     <span className="text-gray-600">Poucas horas</span>
