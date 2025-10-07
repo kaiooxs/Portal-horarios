@@ -71,20 +71,43 @@ export const useTurmas = () => {
 
 /**
  * Hook para buscar disciplinas por turma/ano do Firestore
+ * Inclui tratamento de erros e retry automático
  */
 export const useDisciplinasTurmaAno = () => {
   const [disciplinasTurmaAno, setDisciplinasTurmaAno] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    const unsubscribe = subscribeToDisciplinasTurmaAno((data) => {
-      setDisciplinasTurmaAno(data);
+    let unsubscribe = null;
+    
+    try {
+      unsubscribe = subscribeToDisciplinasTurmaAno((data) => {
+        setDisciplinasTurmaAno(data);
+        setLoading(false);
+        setError(null);
+        setRetryCount(0);
+      });
+    } catch (err) {
+      console.error("[useDisciplinasTurmaAno] Erro ao subscrever:", err);
+      setError(err.message);
       setLoading(false);
-    });
+      
+      // Retry automático após 3 segundos (máximo 3 tentativas)
+      if (retryCount < 3) {
+        setTimeout(() => {
+          console.log(`[useDisciplinasTurmaAno] Tentativa ${retryCount + 1} de reconexão...`);
+          setRetryCount(retryCount + 1);
+          setLoading(true);
+        }, 3000);
+      }
+    }
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [retryCount]);
 
   return { disciplinasTurmaAno, loading, error };
 };

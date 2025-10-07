@@ -14,7 +14,36 @@ import { FIRESTORE_PATHS } from "../constants";
 
 /**
  * Serviço para interagir com o Firestore
+ * Inclui cache local para melhorar performance
  */
+
+// ==================== CACHE LOCAL ====================
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const cache = {
+  disciplinasTurmaAno: { data: null, timestamp: null },
+  professores: { data: null, timestamp: null },
+  turmas: { data: null, timestamp: null },
+};
+
+const isCacheValid = (cacheKey) => {
+  const cached = cache[cacheKey];
+  if (!cached.data || !cached.timestamp) return false;
+  return Date.now() - cached.timestamp < CACHE_DURATION;
+};
+
+const setCache = (cacheKey, data) => {
+  cache[cacheKey] = { data, timestamp: Date.now() };
+  console.log(`[Cache] ✅ ${cacheKey} armazenado em cache`);
+};
+
+const getCache = (cacheKey) => {
+  if (isCacheValid(cacheKey)) {
+    console.log(`[Cache] ✅ ${cacheKey} recuperado do cache`);
+    return cache[cacheKey].data;
+  }
+  return null;
+};
 
 // ==================== PROFESSORES ====================
 
@@ -67,11 +96,20 @@ export const subscribeToTurmas = (callback) => {
 // ==================== DISCIPLINAS POR TURMA/ANO ====================
 
 export const getDisciplinasTurmaAno = async () => {
+  // Verificar cache primeiro
+  const cached = getCache('disciplinasTurmaAno');
+  if (cached) return cached;
+
+  // Buscar do Firebase
   const snapshot = await getDocs(collection(db, FIRESTORE_PATHS.DISCIPLINAS_TURMA_ANO));
   const data = {};
   snapshot.docs.forEach(doc => {
     data[doc.id] = doc.data();
   });
+  
+  // Armazenar em cache
+  setCache('disciplinasTurmaAno', data);
+  
   return data;
 };
 
@@ -82,14 +120,26 @@ export const getDisciplinasPorTurma = async (turmaId) => {
 };
 
 export const subscribeToDisciplinasTurmaAno = (callback) => {
-  return onSnapshot(collection(db, FIRESTORE_PATHS.DISCIPLINAS_TURMA_ANO), (snapshot) => {
-    const data = {};
-    snapshot.docs.forEach(doc => {
-      data[doc.id] = doc.data();
-    });
-    console.log("[FirestoreService] Disciplinas por turma/ano carregadas:", data);
-    callback(data);
-  });
+  return onSnapshot(
+    collection(db, FIRESTORE_PATHS.DISCIPLINAS_TURMA_ANO), 
+    (snapshot) => {
+      const data = {};
+      snapshot.docs.forEach(doc => {
+        data[doc.id] = doc.data();
+      });
+      console.log("[FirestoreService] ✅ Disciplinas por turma/ano carregadas:", {
+        totalTurmas: Object.keys(data).length,
+        turmas: Object.keys(data),
+        timestamp: new Date().toLocaleTimeString()
+      });
+      callback(data);
+    },
+    (error) => {
+      console.error("[FirestoreService] ❌ Erro ao carregar disciplinas_turma_ano:", error);
+      console.error("[FirestoreService] Verifique se a coleção existe no Firebase Console");
+      callback({});
+    }
+  );
 };
 
 // ==================== SCHEDULES ====================
@@ -164,11 +214,22 @@ export const subscribeToAvailability = (professorId, callback) => {
 };
 
 export const subscribeToAllAvailabilities = (callback) => {
-  return onSnapshot(collection(db, FIRESTORE_PATHS.AVAILABILITIES), (snapshot) => {
-    const availabilities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    console.log("[FirestoreService] Disponibilidades carregadas:", availabilities);
-    callback(availabilities);
-  });
+  return onSnapshot(
+    collection(db, FIRESTORE_PATHS.AVAILABILITIES), 
+    (snapshot) => {
+      const availabilities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log("[FirestoreService] ✅ Disponibilidades carregadas:", {
+        totalProfessores: availabilities.length,
+        professores: availabilities.map(a => a.nome || a.id),
+        timestamp: new Date().toLocaleTimeString()
+      });
+      callback(availabilities);
+    },
+    (error) => {
+      console.error("[FirestoreService] ❌ Erro ao carregar disponibilidades:", error);
+      callback([]);
+    }
+  );
 };
 
 // ==================== CLEANUP ====================
