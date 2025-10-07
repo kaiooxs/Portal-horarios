@@ -132,9 +132,6 @@ function AdminDashboard() {
       <div className="bg-white p-6 rounded-2xl shadow-md text-center">
         <div className="animate-spin inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
         <p className="text-lg font-semibold text-gray-700 mb-2">Carregando dados do admin...</p>
-        <p className="text-sm text-gray-500">
-          Carregando {TURMAS.length} turmas e disponibilidades dos professores
-        </p>
         <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
           <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
         </div>
@@ -167,19 +164,19 @@ function AdminDashboard() {
           ⏱️ Verificar Horas
         </button>
         <button
-          onClick={() => setAbaAtiva("cardapio")}
+          onClick={() => setAbaAtiva("Ementa")}
           className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-            abaAtiva === "cardapio"
+            abaAtiva === "Ementa"
               ? "bg-orange-500 text-white shadow-lg"
               : "bg-white text-gray-700 hover:bg-gray-50"
           }`}
         >
-          🍽️ Gerir Cardápio
+          🍽️ Gerir Ementa
         </button>
       </div>
 
       {/*Conteúdo condicional */}
-      {abaAtiva === "cardapio" ? (
+      {abaAtiva === "ementa" ? (
         <MenuAdmin />
       ) : abaAtiva === "horas" ? (
         <HorasRestantesAdmin />
