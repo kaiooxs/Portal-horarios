@@ -152,11 +152,16 @@ function HorasRestantesAdmin() {
           className="w-full border-2 border-gray-300 rounded-lg p-3 focus:border-blue-500 focus:outline-none"
         >
           <option value="">-- Selecione um professor --</option>
-          {PROFESSORES_EXEMPLO.map((prof) => (
-            <option key={prof} value={prof}>
-              {prof}
-            </option>
-          ))}
+          {PROFESSORES_EXEMPLO.map((professor) => {
+            // Suportar tanto objetos quanto strings
+            const nome = typeof professor === 'string' ? professor : professor.nome;
+            const id = typeof professor === 'string' ? professor : professor.id;
+            return (
+              <option key={id} value={nome}>
+                {nome}
+              </option>
+            );
+          })}
         </select>
       </div>
 

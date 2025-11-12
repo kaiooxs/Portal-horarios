@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { TURMAS, PROFESSORES_EXEMPLO } from "../constants";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
+import { TURMAS, PROFESSORES_EXEMPLO, FIRESTORE_PATHS } from "../constants";
 
 function LoginScreen({ onLogin }) {
   const [role, setRole] = useState("");
@@ -8,6 +10,34 @@ function LoginScreen({ onLogin }) {
   const [turmaInput, setTurmaInput] = useState("");
   const [professorNameInput, setProfessorNameInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [professores, setProfessores] = useState(PROFESSORES_EXEMPLO);
+
+  useEffect(() => {
+    const fetchProfessores = async () => {
+      try {
+        const docRef = doc(db, FIRESTORE_PATHS.PROFESSORES, "lista");
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.professores) && data.professores.length > 0) {
+            setProfessores(data.professores);
+          } else if (Array.isArray(data.nomes) && data.nomes.length > 0) {
+            const converted = data.nomes.map((nome) => ({
+              id: nome.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, ""),
+              nome,
+              disciplinas: [],
+              turmas: [],
+            }));
+            setProfessores(converted);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar professores:", error);
+      }
+    };
+
+    fetchProfessores();
+  }, []);
 
   const handleLogin = (e) => {
     e?.preventDefault();
@@ -107,11 +137,16 @@ function LoginScreen({ onLogin }) {
                   required
                 >
                   <option value="">Selecione seu nome</option>
-                  {PROFESSORES_EXEMPLO.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
+                  {professores.map((professor) => {
+                    const nome = typeof professor === "string" ? professor : professor.nome;
+                    const normalized = (nome || "").toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+                    const id = typeof professor === "string" ? normalized : professor.id || normalized;
+                    return (
+                      <option key={id} value={nome}>
+                        {nome}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div>

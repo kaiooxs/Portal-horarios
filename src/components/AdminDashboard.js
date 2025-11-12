@@ -7,6 +7,7 @@ import { downloadSchedulePDF } from "../utils/pdfExport";
 import { atualizarHorasRestantesTurma } from "../services/firestoreService";
 import MenuAdmin from "./MenuAdmin";
 import HorasRestantesAdmin from "./HorasRestantesAdmin";
+import FirestoreDataManager from "./FirestoreDataManager";
 
 function AdminDashboard() {
   const [schedules, setSchedules] = useState({});
@@ -21,7 +22,10 @@ function AdminDashboard() {
     const totalToLoad = TURMAS.length + 1; // turmas + availabilities
 
     // Carregar schedules com batching para melhor performance
-    TURMAS.forEach((t) => {
+    TURMAS.forEach((turma) => {
+      // Suportar tanto objetos quanto strings
+      const t = typeof turma === 'string' ? turma : turma.nome;
+      
       const docRef = doc(db, `artifacts/default-app-id/public/data/schedules`, t);
       const unsub = onSnapshot(docRef, (snap) => {
         if (snap.exists()) {
@@ -173,6 +177,16 @@ function AdminDashboard() {
         >
           🍽️ Gerir Ementa
         </button>
+        <button
+          onClick={() => setAbaAtiva("dados")}
+          className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+            abaAtiva === "dados"
+              ? "bg-green-600 text-white shadow-lg"
+              : "bg-white text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          🔧 Gerir Dados
+        </button>
       </div>
 
       {/*Conteúdo condicional */}
@@ -180,6 +194,8 @@ function AdminDashboard() {
         <MenuAdmin />
       ) : abaAtiva === "horas" ? (
         <HorasRestantesAdmin />
+      ) : abaAtiva === "dados" ? (
+        <FirestoreDataManager />
       ) : (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 text-gray-800">
@@ -204,9 +220,13 @@ function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {PROFESSORES_EXEMPLO.map((nome) => {
-                // Buscar professor pelo ID normalizado ou pelo nome
-                const docId = nome.toLowerCase().replace(/\s+/g, "_");
+              {PROFESSORES_EXEMPLO.map((professor) => {
+                // Suportar tanto objetos quanto strings
+                const nome = typeof professor === 'string' ? professor : professor.nome;
+                const docId = typeof professor === 'string' 
+                  ? professor.toLowerCase().replace(/\s+/g, "_")
+                  : professor.id;
+                
                 const prof = availabilities.find((p) => p.id === docId || p.nome === nome);
                 
                 // Debug para verificar se o professor foi encontrado
@@ -215,7 +235,7 @@ function AdminDashboard() {
                 }
                 
                 return (
-                  <tr key={nome} className="text-center hover:bg-blue-50 transition-colors">
+                  <tr key={docId} className="text-center hover:bg-blue-50 transition-colors">
                     <td className="border px-3 py-2 font-medium">{nome}</td>
                     <td className="border px-3 py-2 text-xs">
                       {prof?.lastUpdated?.seconds
@@ -249,9 +269,13 @@ function AdminDashboard() {
 
         {/* Mobile: Cards */}
         <div className="md:hidden space-y-3">
-          {PROFESSORES_EXEMPLO.map((nome) => {
-            // Buscar professor pelo ID normalizado ou pelo nome
-            const docId = nome.toLowerCase().replace(/\s+/g, "_");
+          {PROFESSORES_EXEMPLO.map((professor) => {
+            // Suportar tanto objetos quanto strings
+            const nome = typeof professor === 'string' ? professor : professor.nome;
+            const docId = typeof professor === 'string' 
+              ? professor.toLowerCase().replace(/\s+/g, "_")
+              : professor.id;
+            
             const prof = availabilities.find((p) => p.id === docId || p.nome === nome);
             
             // Debug para verificar se o professor foi encontrado
@@ -260,7 +284,7 @@ function AdminDashboard() {
             }
             
             return (
-              <div key={nome} className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm">
+              <div key={docId} className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm">
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="font-bold text-gray-800">{nome}</h4>
                   {prof?.lastUpdated ? (
@@ -296,8 +320,13 @@ function AdminDashboard() {
       </div>
 
       {/*Horários das turmas - RESPONSIVO */}
-      {TURMAS.map((t) => (
-        <div key={t} className="mb-6 p-3 sm:p-4 border-2 border-gray-200 rounded-xl bg-gradient-to-br from-white to-gray-50 shadow-sm">
+      {TURMAS.map((turma) => {
+        // Suportar tanto objetos quanto strings
+        const t = typeof turma === 'string' ? turma : turma.nome;
+        const turmaId = typeof turma === 'string' ? turma : turma.id;
+        
+        return (
+        <div key={turmaId} className="mb-6 p-3 sm:p-4 border-2 border-gray-200 rounded-xl bg-gradient-to-br from-white to-gray-50 shadow-sm">
           {/* Header responsivo */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
             <h3 className="font-bold text-base sm:text-lg md:text-xl text-gray-800">
@@ -408,7 +437,8 @@ function AdminDashboard() {
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
         </motion.div>
       )}
     </div>
