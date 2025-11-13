@@ -15,7 +15,7 @@ import {
 export const useProfessores = () => {
   const [professores, setProfessores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToProfessores((data) => {
@@ -35,7 +35,7 @@ export const useProfessores = () => {
 export const useDisciplinas = () => {
   const [disciplinas, setDisciplinas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToDisciplinas((data) => {
@@ -55,7 +55,7 @@ export const useDisciplinas = () => {
 export const useTurmas = () => {
   const [turmas, setTurmas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToTurmas((data) => {
@@ -118,7 +118,7 @@ export const useDisciplinasTurmaAno = () => {
 export const useSchedules = (turmas) => {
   const [schedules, setSchedules] = useState({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   useEffect(() => {
     if (!turmas || turmas.length === 0) {
@@ -143,7 +143,7 @@ export const useSchedules = (turmas) => {
 export const useAvailabilities = () => {
   const [availabilities, setAvailabilities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToAllAvailabilities((data) => {
@@ -163,7 +163,7 @@ export const useAvailabilities = () => {
 export const useProfessorAvailability = (professorId) => {
   const [availability, setAvailability] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   useEffect(() => {
     if (!professorId) {

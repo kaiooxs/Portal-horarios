@@ -10,7 +10,6 @@ import { useDisciplinasTurmaAno } from "../hooks/useFirestore";
 import { calcularHorasRestantes } from "../services/firestoreService";
 
 function ProfessorDashboard({ professorNameFromLogin }) {
-  const [nome, setNome] = useState(professorNameFromLogin || "");
   const [minhasTurmas, setMinhasTurmas] = useState([]);
   const [disciplinaByTurma, setDisciplinaByTurma] = useState({});
   const [slotsMap, setSlotsMap] = useState({});

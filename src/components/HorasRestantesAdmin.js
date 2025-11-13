@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { PROFESSORES_EXEMPLO, TURMAS } from "../constants";
 import { useDisciplinasTurmaAno } from "../hooks/useFirestore";
 import { calcularHorasRestantes } from "../services/firestoreService";
 

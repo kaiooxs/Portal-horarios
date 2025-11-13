@@ -122,7 +122,6 @@ function FirestoreDataManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [authUser, setAuthUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
   
   // Estados para cada tipo de dado
   const [professores, setProfessores] = useState([]);
@@ -131,8 +130,6 @@ function FirestoreDataManager() {
   const [cursos, setCursos] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [horasDisciplinas, setHorasDisciplinas] = useState({});
-  const [disciplinaCursoMap, setDisciplinaCursoMap] = useState({});
-  const [turmaCursoMap, setTurmaCursoMap] = useState({});
   
   // Estados para controle de migração
   const [needsMigration, setNeedsMigration] = useState({
@@ -154,8 +151,7 @@ function FirestoreDataManager() {
   const [horasInput, setHorasInput] = useState(0);
 
   // Estados para formulários estruturados
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [formData, setFormData] = useState({
+  const [ setFormData] = useState({
     // Professor
     nome: "",
     disciplinas: [],
@@ -177,8 +173,6 @@ function FirestoreDataManager() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       console.log("🔐 Estado de autenticação:", user ? "Autenticado" : "Não autenticado");
       setAuthUser(user);
-      setAuthReady(true);
-      
       if (user) {
         console.log("✅ Usuário autenticado, carregando dados...");
         loadAllData();
@@ -199,9 +193,7 @@ function FirestoreDataManager() {
         loadTurmas(),
         loadCursos(),
         loadTimeSlots(),
-        loadHorasDisciplinas(),
-        loadDisciplinaCursoMap(),
-        loadTurmaCursoMap()
+        loadHorasDisciplinas()
       ]);
     } catch (error) {
       console.error("❌ Erro ao carregar dados:", error);
@@ -415,42 +407,6 @@ function FirestoreDataManager() {
     }
   };
 
-  const loadDisciplinaCursoMap = async () => {
-    try {
-      const docRef = doc(db, FIRESTORE_PATHS.DISCIPLINA_CURSO, "mapeamento");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setDisciplinaCursoMap(data.map || {});
-        console.log("✅ Mapeamento disciplina-curso carregado");
-      } else {
-        console.log("⚠️ Mapeamento disciplina-curso não encontrado. Usando dados das constantes.");
-        setDisciplinaCursoMap(DISCIPLINA_CURSO_MAP);
-      }
-    } catch (error) {
-      console.error("❌ Erro ao carregar mapeamento disciplina-curso:", error);
-      setDisciplinaCursoMap(DISCIPLINA_CURSO_MAP);
-    }
-  };
-
-  const loadTurmaCursoMap = async () => {
-    try {
-      const docRef = doc(db, FIRESTORE_PATHS.TURMA_CURSO, "mapeamento");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setTurmaCursoMap(data.map || {});
-        console.log("✅ Mapeamento turma-curso carregado");
-      } else {
-        console.log("⚠️ Mapeamento turma-curso não encontrado. Usando dados das constantes.");
-        setTurmaCursoMap(TURMA_CURSO_MAP);
-      }
-    } catch (error) {
-      console.error("❌ Erro ao carregar mapeamento turma-curso:", error);
-      setTurmaCursoMap(TURMA_CURSO_MAP);
-    }
-  };
-
   const loadTimeSlots = async () => {
     try {
       const basePath = "artifacts/default-app-id/public/data/config";
@@ -537,10 +493,6 @@ function FirestoreDataManager() {
       }
 
       await Promise.all(promises);
-      
-      // Salvar mapeamentos
-      await saveDisciplinaCursoMap(DISCIPLINA_CURSO_MAP, true);
-      await saveTurmaCursoMap(TURMA_CURSO_MAP, true);
       
       setNeedsMigration({
         professores: false,
@@ -734,74 +686,6 @@ function FirestoreDataManager() {
         if (!silent) alert("❌ Erro de permissão: Verifique se você está autenticado");
       } else {
         if (!silent) alert("❌ Erro ao salvar cursos: " + error.message);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveDisciplinaCursoMap = async (newMap, silent = false) => {
-    setSaving(true);
-    try {
-      // Verificar autenticação
-      if (!authUser) {
-        console.error("❌ Usuário não autenticado!");
-        if (!silent) alert("❌ Erro: Você precisa estar autenticado para salvar dados");
-        return;
-      }
-      
-      console.log("💾 Salvando mapeamento disciplina-curso no Firestore...");
-      console.log("📍 Path:", FIRESTORE_PATHS.DISCIPLINA_CURSO);
-      
-      await setDoc(doc(db, FIRESTORE_PATHS.DISCIPLINA_CURSO, "mapeamento"), {
-        map: newMap,
-        lastUpdated: new Date()
-      });
-      
-      setDisciplinaCursoMap(newMap);
-      if (!silent) console.log("✅ Mapeamento disciplina-curso salvo");
-    } catch (error) {
-      console.error("❌ Erro ao salvar mapeamento disciplina-curso:", error);
-      console.error("❌ Código do erro:", error.code);
-      
-      if (error.code === 'permission-denied') {
-        if (!silent) alert("❌ Erro de permissão: Verifique se você está autenticado");
-      } else {
-        if (!silent) alert("❌ Erro ao salvar mapeamento disciplina-curso: " + error.message);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveTurmaCursoMap = async (newMap, silent = false) => {
-    setSaving(true);
-    try {
-      // Verificar autenticação
-      if (!authUser) {
-        console.error("❌ Usuário não autenticado!");
-        if (!silent) alert("❌ Erro: Você precisa estar autenticado para salvar dados");
-        return;
-      }
-      
-      console.log("💾 Salvando mapeamento turma-curso no Firestore...");
-      console.log("📍 Path:", FIRESTORE_PATHS.TURMA_CURSO);
-      
-      await setDoc(doc(db, FIRESTORE_PATHS.TURMA_CURSO, "mapeamento"), {
-        map: newMap,
-        lastUpdated: new Date()
-      });
-      
-      setTurmaCursoMap(newMap);
-      if (!silent) console.log("✅ Mapeamento turma-curso salvo");
-    } catch (error) {
-      console.error("❌ Erro ao salvar mapeamento turma-curso:", error);
-      console.error("❌ Código do erro:", error.code);
-      
-      if (error.code === 'permission-denied') {
-        if (!silent) alert("❌ Erro de permissão: Verifique se você está autenticado");
-      } else {
-        if (!silent) alert("❌ Erro ao salvar mapeamento turma-curso: " + error.message);
       }
     } finally {
       setSaving(false);
@@ -1107,25 +991,6 @@ function FirestoreDataManager() {
     }
 
     setNewItemValue("");
-  };
-
-  const getCurrentList = () => {
-    switch (activeTab) {
-      case "professores":
-        return professores;
-      case "disciplinas":
-        return disciplinas;
-      case "turmas":
-        return turmas;
-      case "cursos":
-        return cursos;
-      case "timeSlots":
-        return timeSlots;
-      case "horasDisciplinas":
-        return Object.keys(horasDisciplinas);
-      default:
-        return [];
-    }
   };
 
   const getTabTitle = () => {
