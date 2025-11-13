@@ -1034,7 +1034,7 @@ function FirestoreDataManager() {
       nomeCurso: "",
       siglaCurso: ""
     });
-    setShowAddForm(false);
+
   };
 
   // Função para lidar com mudanças no formulário
